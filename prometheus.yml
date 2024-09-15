@@ -1,0 +1,13 @@
+global:
+  scrape_interval: 3s
+
+scrape_configs:
+  - job_name: 'producer'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['producer:8081']
+
+  - job_name: 'consumer'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['consumer:8082']
