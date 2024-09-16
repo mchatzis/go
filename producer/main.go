@@ -6,17 +6,18 @@ import (
 	"time"
 
 	"producer/db"
+	"producer/db/models/task"
 )
 
 func main() {
-	dbpool, err := db.InitDBPool()
-	if err != nil {
+	database := &db.Database{}
+	if err := database.Init(); err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
-	defer dbpool.Close()
+	defer database.Close()
 
-	db.FetchAndPrintTasks(dbpool)
+	task.FetchAndPrintTasks(database)
 
 	for {
 		fmt.Println("Hello producer")
