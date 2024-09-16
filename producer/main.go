@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"producer/db"
-	"producer/db/models/task"
 )
 
 func main() {
@@ -17,7 +16,7 @@ func main() {
 	}
 	defer database.Close()
 
-	task.FetchAndPrintTasks(database)
+	db.FetchAndPrintTasks(database)
 
 	for {
 		fmt.Println("Hello producer")
