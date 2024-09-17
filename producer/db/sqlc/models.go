@@ -7,8 +7,6 @@ package sqlc
 import (
 	"database/sql/driver"
 	"fmt"
-
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type TaskState string
@@ -57,9 +55,9 @@ func (ns NullTaskState) Value() (driver.Value, error) {
 
 type Task struct {
 	ID             int32
-	Type           pgtype.Int4
-	Value          pgtype.Int4
-	State          NullTaskState
-	Creationtime   pgtype.Float8
-	Lastupdatetime pgtype.Float8
+	Type           int32
+	Value          int32
+	State          TaskState
+	Creationtime   float64
+	Lastupdatetime float64
 }

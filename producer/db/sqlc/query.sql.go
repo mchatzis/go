@@ -9,6 +9,49 @@ import (
 	"context"
 )
 
+const createTask = `-- name: CreateTask :exec
+INSERT INTO tasks (id, type, value, state, creationtime, lastupdatetime) VALUES ($1, $2, $3, $4, $5, $6)
+`
+
+type CreateTaskParams struct {
+	ID             int32
+	Type           int32
+	Value          int32
+	State          TaskState
+	Creationtime   float64
+	Lastupdatetime float64
+}
+
+func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) error {
+	_, err := q.db.Exec(ctx, createTask,
+		arg.ID,
+		arg.Type,
+		arg.Value,
+		arg.State,
+		arg.Creationtime,
+		arg.Lastupdatetime,
+	)
+	return err
+}
+
+const getTaskById = `-- name: GetTaskById :one
+SELECT id, type, value, state, creationtime, lastupdatetime FROM tasks WHERE id = $1
+`
+
+func (q *Queries) GetTaskById(ctx context.Context, id int32) (Task, error) {
+	row := q.db.QueryRow(ctx, getTaskById, id)
+	var i Task
+	err := row.Scan(
+		&i.ID,
+		&i.Type,
+		&i.Value,
+		&i.State,
+		&i.Creationtime,
+		&i.Lastupdatetime,
+	)
+	return i, err
+}
+
 const getTasks = `-- name: GetTasks :many
 SELECT id, type, value, state, creationtime, lastupdatetime FROM tasks
 `
@@ -38,4 +81,29 @@ func (q *Queries) GetTasks(ctx context.Context) ([]Task, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateTask = `-- name: UpdateTask :exec
+UPDATE tasks SET id = $1, type = $2, value = $3, state = $4, lastupdatetime = $5 WHERE id = $6
+`
+
+type UpdateTaskParams struct {
+	ID             int32
+	Type           int32
+	Value          int32
+	State          TaskState
+	Lastupdatetime float64
+	ID_2           int32
+}
+
+func (q *Queries) UpdateTask(ctx context.Context, arg UpdateTaskParams) error {
+	_, err := q.db.Exec(ctx, updateTask,
+		arg.ID,
+		arg.Type,
+		arg.Value,
+		arg.State,
+		arg.Lastupdatetime,
+		arg.ID_2,
+	)
+	return err
 }

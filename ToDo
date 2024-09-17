@@ -1,0 +1,5 @@
+- .env automatic find
+- automatically initialize database
+- db docker healthcheck
+- errorChan buffer of 100 can overflow. Need rethinking
+- 

@@ -8,11 +8,11 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type Database struct {
+type Connection struct {
 	Pool *pgxpool.Pool
 }
 
-func (db *Database) Init() error {
+func (db *Connection) Init() error {
 	ctx := context.Background()
 	dbpool, err := pgxpool.New(ctx, os.Getenv("POSTGRES_URL"))
 	if err != nil {
@@ -22,6 +22,6 @@ func (db *Database) Init() error {
 	return nil
 }
 
-func (db *Database) Close() {
+func (db *Connection) Close() {
 	db.Pool.Close()
 }

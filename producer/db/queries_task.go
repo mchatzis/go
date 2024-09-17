@@ -2,17 +2,22 @@ package db
 
 import (
 	"context"
-	"log"
 	"producer/db/sqlc"
 )
 
-func FetchAndPrintTasks(database *Database) {
-	queries := sqlc.New(database.Pool)
+func CreateTask(queries *sqlc.Queries, task sqlc.Task) error {
+	params := sqlc.CreateTaskParams(task)
+	err := queries.CreateTask(context.Background(), params)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func GetAllTasks(queries *sqlc.Queries) ([]sqlc.Task, error) {
 	tasks, err := queries.GetTasks(context.Background())
 	if err != nil {
-		log.Println(err)
-		return
+		return nil, err
 	}
-	log.Println(tasks[0].Value.Valid)
-	log.Println(tasks)
+	return tasks, nil
 }

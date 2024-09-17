@@ -9,14 +9,14 @@ import (
 )
 
 func main() {
-	database := &db.Database{}
-	if err := database.Init(); err != nil {
+	connection := &db.Connection{}
+	if err := connection.Init(); err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
-	defer database.Close()
+	defer connection.Close()
 
-	db.FetchAndPrintTasks(database)
+	Run(connection.Pool)
 
 	for {
 		fmt.Println("Hello producer")
