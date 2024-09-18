@@ -41,7 +41,7 @@ func SendTasks(taskChan <-chan sqlc.Task, errorChan chan<- struct {
 	Task sqlc.Task
 	Err  error
 }) {
-	conn, err := grpc.NewClient("localhost:5000", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient("consumer:8082", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("Failed to connect: %v", err)
 	}
