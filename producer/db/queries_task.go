@@ -2,7 +2,8 @@ package db
 
 import (
 	"context"
-	"producer/db/sqlc"
+
+	"github.com/mchatzis/go/producer/db/sqlc"
 )
 
 func CreateTask(queries *sqlc.Queries, task sqlc.Task) error {

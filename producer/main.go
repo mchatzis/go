@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"producer/db"
+	"github.com/mchatzis/go/producer/db"
 )
 
 func main() {

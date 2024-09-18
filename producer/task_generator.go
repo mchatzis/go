@@ -3,9 +3,10 @@ package main
 import (
 	"log"
 	"math/rand"
-	"producer/db"
-	"producer/db/sqlc"
 	"time"
+
+	"github.com/mchatzis/go/producer/db"
+	"github.com/mchatzis/go/producer/db/sqlc"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )

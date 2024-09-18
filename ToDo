@@ -2,4 +2,5 @@
 - automatically initialize database
 - db docker healthcheck
 - errorChan buffer of 100 can overflow. Need rethinking
-- 
+- Use .env for grpc host:port
+- Think which port to use for grpc
