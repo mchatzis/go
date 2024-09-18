@@ -9,3 +9,6 @@ INSERT INTO tasks (id, type, value, state, creationtime, lastupdatetime) VALUES 
 
 -- name: UpdateTask :exec
 UPDATE tasks SET id = $1, type = $2, value = $3, state = $4, lastupdatetime = $5 WHERE id = $6;
+
+-- name: UpdateTaskState :exec
+UPDATE tasks SET state = $1 WHERE id = $2;
