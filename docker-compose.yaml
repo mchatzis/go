@@ -36,6 +36,8 @@ services:
       watch:
         - action: rebuild
           path: ./producer
+        - action: rebuild
+          path: ./consumer
 
   consumer:
     container_name: consumer
@@ -49,6 +51,10 @@ services:
       - postgres
     networks:
       - app-network
+    develop:
+      watch:
+        - action: rebuild
+          path: ./consumer
 
   prometheus:
     image: prom/prometheus

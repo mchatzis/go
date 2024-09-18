@@ -13,21 +13,24 @@ import (
 
 func Run(pool *pgxpool.Pool) {
 	queries := sqlc.New(pool)
+	time.Sleep(time.Second)
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
-	taskChan := make(chan sqlc.Task)
+	saveTaskChan := make(chan sqlc.Task)
+	sendTaskChan := make(chan sqlc.Task)
 	errorChan := make(chan struct {
 		Task sqlc.Task
 		Err  error
 	}, 100)
 
-	go saveTasks(queries, taskChan, errorChan)
-	go grpc.SendTasks(taskChan, errorChan)
+	go saveTasks(queries, saveTaskChan, errorChan)
+	go grpc.SendTasks(sendTaskChan, errorChan)
 
 	var failedSaveTasks []sqlc.Task
-	for i := 103; i < 108; i++ {
+	for i := 1; i < 1000; i++ {
 		task := generateTask(r, i)
-		taskChan <- task
+		saveTaskChan <- task
+		sendTaskChan <- task
 
 		select {
 		case errInfo := <-errorChan:
@@ -37,7 +40,6 @@ func Run(pool *pgxpool.Pool) {
 		}
 
 		log.Print(task)
-		time.Sleep(5 * time.Second)
 	}
 }
 

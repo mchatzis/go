@@ -9,4 +9,11 @@
 - Create TaskError in sqlc package
 - Understand when unbuffered vs buffered channels block + for c := range channel { } syntactic sugar. 
     What happens if I send two values to an unbuffered channel?
-- 
+- Graceful shutdown: In a production system, you'd want to implement a graceful shutdown mechanism
+  to ensure no tasks are lost when the program exits.
+- Backpressure: If tasks arrive faster than they can be processed, the channel might fill up. 
+  You'll need to decide how to handle this (e.g., blocking, dropping tasks, or implementing a more sophisticated queuing system).
+- Scalability: For high-volume systems, you might consider using multiple worker goroutines to process tasks in parallel.
+- task_generator: Save and Send tasks might compete for the same errochannel
+- Review errors, determine when to panic
+- Extract shared microservice code

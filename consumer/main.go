@@ -1,13 +1,14 @@
 package main
 
 import (
-	"time"
+	"log"
 )
 
 func main() {
-	go Listen()
+	taskChan := make(chan *Task, 100)
+	go ListenForTasks(taskChan)
 
-	for {
-		time.Sleep(5 * time.Second)
+	for task := range taskChan {
+		log.Printf("Processing task: %+v", *task)
 	}
 }
