@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+option go_package = ".;grpc";
+
+import "google/protobuf/empty.proto";
+
+enum TaskState {
+    PENDING = 0;
+    IN_PROGRESS = 1;
+    COMPLETED = 2;
+    FAILED = 3;
+}
+
+message Task {
+    int32 id = 1;
+    int32 type = 2;
+    int32 value = 3;
+    TaskState state = 4;
+    double creation_time = 5;
+    double last_update_time = 6;
+}
+
+service TaskService {
+    rpc SendTask(Task) returns (google.protobuf.Empty);
+}

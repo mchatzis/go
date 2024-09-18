@@ -5,10 +5,10 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mchatzis/go/producer/db"
 	"github.com/mchatzis/go/producer/db/sqlc"
-
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/mchatzis/go/producer/grpc"
 )
 
 func Run(pool *pgxpool.Pool) {
@@ -22,6 +22,7 @@ func Run(pool *pgxpool.Pool) {
 	}, 100)
 
 	go saveTasks(queries, taskChan, errorChan)
+	go grpc.SendTasks(taskChan, errorChan)
 
 	var failedSaveTasks []sqlc.Task
 	for i := 103; i < 108; i++ {
@@ -30,7 +31,7 @@ func Run(pool *pgxpool.Pool) {
 
 		select {
 		case errInfo := <-errorChan:
-			log.Printf("Error saving task ID %d: %v\n", errInfo.Task.ID, errInfo.Err)
+			log.Printf("Error sending/saving task ID %d: %v\n", errInfo.Task.ID, errInfo.Err)
 			failedSaveTasks = append(failedSaveTasks, errInfo.Task)
 		default:
 		}
