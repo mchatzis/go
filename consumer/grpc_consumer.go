@@ -8,50 +8,33 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
 
+	"github.com/mchatzis/go/producer/db/sqlc"
 	producer_grpc "github.com/mchatzis/go/producer/grpc"
 )
 
-type TaskState string
-
-const (
-	TaskStatePending    TaskState = "pending"
-	TaskStateInProgress TaskState = "in_progress"
-	TaskStateCompleted  TaskState = "completed"
-	TaskStateFailed     TaskState = "failed"
-)
-
-type Task struct {
-	ID             int32
-	Type           int32
-	Value          int32
-	State          TaskState
-	Creationtime   float64
-	Lastupdatetime float64
-}
-
 type server struct {
 	producer_grpc.UnimplementedTaskServiceServer
-	taskChan chan *Task
+	taskChan chan *sqlc.Task
 }
 
-func (s *server) SendTask(ctx context.Context, task *producer_grpc.Task) (*emptypb.Empty, error) {
-	consumerTask := Task{
-		ID:             task.Id,
-		Type:           task.Type,
-		Value:          task.Value,
-		State:          mapGrpcTaskState(task.State),
-		Creationtime:   task.CreationTime,
-		Lastupdatetime: task.LastUpdateTime,
+func (s *server) SendTask(ctx context.Context, grpc_task *producer_grpc.Task) (*emptypb.Empty, error) {
+	task := sqlc.Task{
+		ID:             grpc_task.Id,
+		Type:           grpc_task.Type,
+		Value:          grpc_task.Value,
+		State:          mapGrpcToSqlc(grpc_task.State),
+		Creationtime:   grpc_task.CreationTime,
+		Lastupdatetime: grpc_task.LastUpdateTime,
 	}
 
-	log.Printf("Received task: %+v", consumerTask)
+	log.Printf("Received task: %+v", task)
 
-	s.taskChan <- &consumerTask
+	s.taskChan <- &task
 
 	return &emptypb.Empty{}, nil
 }
 
-func ListenForTasks(taskChan chan *Task) {
+func ListenForTasks(taskChan chan *sqlc.Task) {
 	listener, err := net.Listen("tcp", ":8082")
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
@@ -63,22 +46,22 @@ func ListenForTasks(taskChan chan *Task) {
 	grpcServer := grpc.NewServer()
 	producer_grpc.RegisterTaskServiceServer(grpcServer, server)
 
-	log.Println("Server is running on port 8082...")
+	log.Println("Server is running on port 8082..")
 	if err := grpcServer.Serve(listener); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}
 }
 
-func mapGrpcTaskState(state producer_grpc.TaskState) TaskState {
+func mapGrpcToSqlc(state producer_grpc.TaskState) sqlc.TaskState {
 	switch state {
 	case producer_grpc.TaskState_PENDING:
-		return TaskStatePending
+		return sqlc.TaskStatePending
 	case producer_grpc.TaskState_IN_PROGRESS:
-		return TaskStateInProgress
+		return sqlc.TaskStateInProgress
 	case producer_grpc.TaskState_COMPLETED:
-		return TaskStateCompleted
+		return sqlc.TaskStateCompleted
 	case producer_grpc.TaskState_FAILED:
-		return TaskStateFailed
+		return sqlc.TaskStateFailed
 	default:
 		log.Fatalf("Unexpected TaskState value: %v", state)
 		return ""

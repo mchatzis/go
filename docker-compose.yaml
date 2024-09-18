@@ -36,8 +36,6 @@ services:
       watch:
         - action: rebuild
           path: ./producer
-        - action: rebuild
-          path: ./consumer
 
   consumer:
     container_name: consumer
