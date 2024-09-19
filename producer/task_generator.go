@@ -11,42 +11,33 @@ import (
 	"github.com/mchatzis/go/producer/grpc"
 )
 
+const MaxBacklog int = 50
+
 func Run(pool *pgxpool.Pool) {
 	queries := sqlc.New(pool)
 	time.Sleep(time.Second)
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
-	saveTaskChan := make(chan sqlc.Task)
-	sendTaskChan := make(chan sqlc.Task)
-	errorChan := make(chan struct {
-		Task sqlc.Task
-		Err  error
-	}, 100)
+	saveTaskChan := make(chan sqlc.Task, MaxBacklog)
+	sendTaskChan := make(chan sqlc.Task, MaxBacklog)
+	errorChan := make(chan grpc.TaskError, 100)
 
 	go saveTasks(queries, saveTaskChan, errorChan)
 	go grpc.SendTasks(sendTaskChan, errorChan)
 
 	var failedSaveTasks []sqlc.Task
-	for i := 1; i < 1000; i++ {
-		task := generateTask(r, i)
-		saveTaskChan <- task
-		sendTaskChan <- task
+	go logErrors(errorChan, failedSaveTasks)
 
-		select {
-		case errInfo := <-errorChan:
-			log.Printf("Error sending/saving task ID %d: %v\n", errInfo.Task.ID, errInfo.Err)
-			failedSaveTasks = append(failedSaveTasks, errInfo.Task)
-		default:
-		}
+	for i := 1; ; i++ {
+		task := generateTask(r, i)
+		sendTaskChan <- task
+		saveTaskChan <- task
 
 		log.Print(task)
 	}
 }
 
-func saveTasks(queries *sqlc.Queries, taskChan <-chan sqlc.Task, errorChan chan<- struct {
-	Task sqlc.Task
-	Err  error
-}) {
+func saveTasks(queries *sqlc.Queries, taskChan <-chan sqlc.Task, errorChan chan<- grpc.TaskError) {
 	for task := range taskChan {
 		err := db.CreateTask(queries, task)
 		if err != nil {
@@ -72,4 +63,11 @@ func generateTask(r *rand.Rand, id int) sqlc.Task {
 	}
 
 	return task
+}
+
+func logErrors(errorChan chan grpc.TaskError, failedSaveTasks []sqlc.Task) {
+	for taskError := range errorChan {
+		log.Printf("Error sending/saving task ID %d: %v\n", taskError.Task.ID, taskError.Err)
+		failedSaveTasks = append(failedSaveTasks, taskError.Task)
+	}
 }

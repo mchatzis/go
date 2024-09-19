@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net"
+	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -27,18 +28,19 @@ func (s *server) SendTask(ctx context.Context, grpc_task *producer_grpc.Task) (*
 		Lastupdatetime: grpc_task.LastUpdateTime,
 	}
 
-	log.Printf("Received task: %+v", task)
-
 	s.taskChan <- &task
 
 	return &emptypb.Empty{}, nil
 }
 
 func ListenForTasks(taskProcessChan chan *sqlc.Task, taskUpdateToInProgressChan chan *sqlc.Task) {
-	taskListenChan := make(chan *sqlc.Task, 100)
+	taskListenChan := make(chan *sqlc.Task)
 	go Listen(taskListenChan)
 
 	for task := range taskListenChan {
+		log.Printf("Received task: %+v", task)
+		log.Printf("Waiting for 500ms: %+v", task)
+		time.Sleep(500 * time.Millisecond)
 		taskProcessChan <- task
 		taskUpdateToInProgressChan <- task
 	}

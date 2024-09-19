@@ -11,10 +11,12 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-func SendTask(client TaskServiceClient, task sqlc.Task, errorChan chan<- struct {
+type TaskError struct {
 	Task sqlc.Task
 	Err  error
-}) {
+}
+
+func SendTask(client TaskServiceClient, task sqlc.Task, errorChan chan<- TaskError) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
@@ -37,10 +39,7 @@ func SendTask(client TaskServiceClient, task sqlc.Task, errorChan chan<- struct 
 	}
 }
 
-func SendTasks(taskChan <-chan sqlc.Task, errorChan chan<- struct {
-	Task sqlc.Task
-	Err  error
-}) {
+func SendTasks(taskChan <-chan sqlc.Task, errorChan chan<- TaskError) {
 	conn, err := grpc.NewClient("consumer:8082", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("Failed to connect: %v", err)

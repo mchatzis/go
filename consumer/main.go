@@ -43,7 +43,7 @@ func main() {
 }
 
 func regroupTasks(taskChanIn chan *sqlc.Task, taskChanIn2 chan *sqlc.Task, taskChanOut chan *sqlc.Task, doneUnmatchedTasks *sync.Map, queries *sqlc.Queries) {
-	// Uses a map to match tasks incoming from channels.
+	// Uses a map to match tasks incoming from the processing and update-to-in-progress channels.
 	// Ensures task has both been processed and updated in db, before forwarding to another db update.
 	for {
 		select {

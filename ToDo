@@ -21,3 +21,5 @@
 - Update task state not only in db but also in memory (i.e. *sqlc.Task)
 - Change TaskState to correct challenge values
 - Depending on rate of reception of tasks, buffer can overfill
+- Correct syntax for channel function parameters that are receive-only channels to taskChan <-chan sqlc.Task
+- Rename stuff
