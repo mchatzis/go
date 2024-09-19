@@ -17,3 +17,4 @@
 - task_generator: Save and Send tasks might compete for the same errochannel
 - Review errors, determine when to panic
 - Extract shared microservice code
+- Use TaskStateFailed

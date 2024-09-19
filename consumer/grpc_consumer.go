@@ -46,7 +46,7 @@ func ListenForTasks(taskChan chan *sqlc.Task) {
 	grpcServer := grpc.NewServer()
 	producer_grpc.RegisterTaskServiceServer(grpcServer, server)
 
-	log.Println("Server is running on port 8082..")
+	log.Println("Server is running on port 8082...")
 	if err := grpcServer.Serve(listener); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}
