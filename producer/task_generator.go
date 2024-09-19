@@ -27,7 +27,7 @@ func Run(pool *pgxpool.Pool) {
 	go grpc.SendTasks(sendTaskChan, errorChan)
 
 	var failedSaveTasks []sqlc.Task
-	for i := 1; i < 5; i++ {
+	for i := 1; i < 1000; i++ {
 		task := generateTask(r, i)
 		saveTaskChan <- task
 		sendTaskChan <- task

@@ -19,3 +19,5 @@
 - Extract shared microservice code
 - Use TaskStateFailed
 - Update task state not only in db but also in memory (i.e. *sqlc.Task)
+- Change TaskState to correct challenge values
+- Depending on rate of reception of tasks, buffer can overfill

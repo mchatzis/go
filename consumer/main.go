@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sync"
 	"time"
 
 	db "github.com/mchatzis/go/producer/db"
 	"github.com/mchatzis/go/producer/db/sqlc"
 )
+
+const BufferSize = 1024
 
 func main() {
 	connection := &db.Connection{}
@@ -20,18 +23,47 @@ func main() {
 	defer connection.Close()
 	queries := sqlc.New(connection.Pool)
 
-	taskUpdateToInProgressChanIn := make(chan *sqlc.Task, 100)
-	taskUpdateToInProgressChanOut := make(chan *sqlc.Task, 100)
-	taskProcessChanIn := make(chan *sqlc.Task, 100)
-	taskProcessChanOut := make(chan *sqlc.Task, 100)
+	var doneUnmatchedTasks sync.Map
+	taskUpdateToInProgressChanIn := make(chan *sqlc.Task, BufferSize)
+	taskUpdateToInProgressChanOut := make(chan *sqlc.Task, BufferSize)
+	taskProcessChanIn := make(chan *sqlc.Task, BufferSize)
+	taskProcessChanOut := make(chan *sqlc.Task, BufferSize)
+	taskUpdateToCompletedChanIn := make(chan *sqlc.Task, BufferSize)
+	taskUpdateToCompletedChanOut := make(chan *sqlc.Task, BufferSize)
+
+	go ListenForTasks(taskProcessChanIn, taskUpdateToInProgressChanIn)
 	for i := 0; i < 15; i++ {
 		go processTask(taskProcessChanIn, taskProcessChanOut)
 		go UpdateTaskState(taskUpdateToInProgressChanIn, taskUpdateToInProgressChanOut, sqlc.TaskStateInProgress, queries)
+		go regroupTasks(taskProcessChanOut, taskUpdateToInProgressChanOut, taskUpdateToCompletedChanIn, &doneUnmatchedTasks, queries)
+		go UpdateTaskState(taskUpdateToCompletedChanIn, taskUpdateToCompletedChanOut, sqlc.TaskStateCompleted, queries)
 	}
 
-	go ListenForTasks(taskProcessChanIn, taskUpdateToInProgressChanIn)
-
 	select {}
+}
+
+func regroupTasks(taskChanIn chan *sqlc.Task, taskChanIn2 chan *sqlc.Task, taskChanOut chan *sqlc.Task, doneUnmatchedTasks *sync.Map, queries *sqlc.Queries) {
+	// Uses a map to match tasks incoming from channels.
+	// Ensures task has both been processed and updated in db, before forwarding to another db update.
+	for {
+		select {
+		case task := <-taskChanIn:
+			log.Printf("taskProcessChanOut: %+v", *task)
+			forwardIfInMap(task, taskChanOut, doneUnmatchedTasks)
+		case task := <-taskChanIn2:
+			log.Printf("taskUpdateToInProgressChanOut: %+v", *task)
+			forwardIfInMap(task, taskChanOut, doneUnmatchedTasks)
+		}
+	}
+}
+
+func forwardIfInMap(task *sqlc.Task, taskChanOut chan *sqlc.Task, doneUnmatchedTasks *sync.Map) {
+	if _, exists := doneUnmatchedTasks.Load(task.ID); exists {
+		taskChanOut <- task
+		doneUnmatchedTasks.Delete(task.ID)
+	} else {
+		doneUnmatchedTasks.Store(task.ID, *task)
+	}
 }
 
 func processTask(taskChanIn chan *sqlc.Task, taskChanOut chan *sqlc.Task) {
@@ -52,7 +84,7 @@ func UpdateTaskState(taskChanIn chan *sqlc.Task, taskChanOut chan *sqlc.Task, st
 		if err != nil {
 			log.Printf("Failed to update task state: %v", err)
 		}
-		log.Printf("Updated task state to in_progress for task: %+v", *task)
+		log.Printf("Updated task state to %+v for task: %+v", state, *task)
 		taskChanOut <- task
 	}
 }
