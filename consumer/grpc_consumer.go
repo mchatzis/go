@@ -34,7 +34,17 @@ func (s *server) SendTask(ctx context.Context, grpc_task *producer_grpc.Task) (*
 	return &emptypb.Empty{}, nil
 }
 
-func ListenForTasks(taskChan chan *sqlc.Task) {
+func ListenForTasks(taskProcessChan chan *sqlc.Task, taskUpdateToInProgressChan chan *sqlc.Task) {
+	taskListenChan := make(chan *sqlc.Task, 100)
+	go Listen(taskListenChan)
+
+	for task := range taskListenChan {
+		taskProcessChan <- task
+		taskUpdateToInProgressChan <- task
+	}
+}
+
+func Listen(taskChan chan *sqlc.Task) {
 	listener, err := net.Listen("tcp", ":8082")
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)

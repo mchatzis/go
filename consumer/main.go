@@ -29,13 +29,7 @@ func main() {
 		go UpdateTaskState(taskUpdateToInProgressChanIn, taskUpdateToInProgressChanOut, sqlc.TaskStateInProgress, queries)
 	}
 
-	taskListenChan := make(chan *sqlc.Task, 100)
-	go ListenForTasks(taskListenChan)
-
-	for task := range taskListenChan {
-		taskProcessChanIn <- task
-		taskUpdateToInProgressChanIn <- task
-	}
+	go ListenForTasks(taskProcessChanIn, taskUpdateToInProgressChanIn)
 
 	select {}
 }
