@@ -20,42 +20,45 @@ func main() {
 	defer connection.Close()
 	queries := sqlc.New(connection.Pool)
 
-	taskUpdateToInProgressChan := make(chan *sqlc.Task, 100)
-	go UpdateTaskStateToInProgress(taskUpdateToInProgressChan, queries)
-
-	taskProcessChan := make(chan *sqlc.Task, 100)
+	taskUpdateToInProgressChanIn := make(chan *sqlc.Task, 100)
+	taskUpdateToInProgressChanOut := make(chan *sqlc.Task, 100)
+	taskProcessChanIn := make(chan *sqlc.Task, 100)
+	taskProcessChanOut := make(chan *sqlc.Task, 100)
 	for i := 0; i < 15; i++ {
-		go processTask(taskProcessChan)
+		go processTask(taskProcessChanIn, taskProcessChanOut)
+		go UpdateTaskState(taskUpdateToInProgressChanIn, taskUpdateToInProgressChanOut, sqlc.TaskStateInProgress, queries)
 	}
 
 	taskListenChan := make(chan *sqlc.Task, 100)
 	go ListenForTasks(taskListenChan)
 
 	for task := range taskListenChan {
-		taskProcessChan <- task
-		taskUpdateToInProgressChan <- task
+		taskProcessChanIn <- task
+		taskUpdateToInProgressChanIn <- task
 	}
 
 	select {}
 }
 
-func processTask(taskChan chan *sqlc.Task) {
-	for task := range taskChan {
+func processTask(taskChanIn chan *sqlc.Task, taskChanOut chan *sqlc.Task) {
+	for task := range taskChanIn {
 		log.Printf("Processing task: %+v", *task)
 		time.Sleep(time.Duration(task.Value) * time.Millisecond)
 		log.Printf("Finished processing task: %+v", *task)
+		taskChanOut <- task
 	}
 }
 
-func UpdateTaskStateToInProgress(taskChan chan *sqlc.Task, queries *sqlc.Queries) {
-	for task := range taskChan {
+func UpdateTaskState(taskChanIn chan *sqlc.Task, taskChanOut chan *sqlc.Task, state sqlc.TaskState, queries *sqlc.Queries) {
+	for task := range taskChanIn {
 		err := queries.UpdateTaskState(context.Background(), sqlc.UpdateTaskStateParams{
-			State: sqlc.TaskStateInProgress,
+			State: state,
 			ID:    task.ID,
 		})
 		if err != nil {
 			log.Printf("Failed to update task state: %v", err)
 		}
 		log.Printf("Updated task state to in_progress for task: %+v", *task)
+		taskChanOut <- task
 	}
 }

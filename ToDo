@@ -18,3 +18,4 @@
 - Review errors, determine when to panic
 - Extract shared microservice code
 - Use TaskStateFailed
+- Update task state not only in db but also in memory (i.e. *sqlc.Task)
