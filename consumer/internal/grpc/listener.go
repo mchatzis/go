@@ -1,4 +1,4 @@
-package main
+package grpc
 
 import (
 	"context"
@@ -9,18 +9,18 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	"github.com/mchatzis/go/producer/db/sqlc"
-	producer_grpc "github.com/mchatzis/go/producer/grpc"
+	prod_grpc "github.com/mchatzis/go/producer/pkg/grpc"
+	"github.com/mchatzis/go/producer/pkg/sqlc"
 )
 
 const rateLimiterMultiplier int = 500
 
 type server struct {
-	producer_grpc.UnimplementedTaskServiceServer
+	prod_grpc.UnimplementedTaskServiceServer
 	taskChan chan *sqlc.Task
 }
 
-func (s *server) SendTask(ctx context.Context, grpc_task *producer_grpc.Task) (*emptypb.Empty, error) {
+func (s *server) SendTask(ctx context.Context, grpc_task *prod_grpc.Task) (*emptypb.Empty, error) {
 	task := sqlc.Task{
 		ID:             grpc_task.Id,
 		Type:           grpc_task.Type,
@@ -35,14 +35,14 @@ func (s *server) SendTask(ctx context.Context, grpc_task *producer_grpc.Task) (*
 	return &emptypb.Empty{}, nil
 }
 
-func ListenForTasks(taskProcessChan chan *sqlc.Task, taskUpdateToInProgressChan chan *sqlc.Task) {
+func ListenForTasks(taskChanOut chan *sqlc.Task, taskChanOut2 chan *sqlc.Task) {
 	taskListenChan := make(chan *sqlc.Task)
 	go Listen(taskListenChan)
 
 	for task := range taskListenChan {
 		time.Sleep(time.Duration(rateLimiterMultiplier) * time.Millisecond)
-		taskProcessChan <- task
-		taskUpdateToInProgressChan <- task
+		taskChanOut <- task
+		taskChanOut2 <- task
 	}
 }
 
@@ -56,7 +56,7 @@ func Listen(taskChan chan *sqlc.Task) {
 		taskChan: taskChan,
 	}
 	grpcServer := grpc.NewServer()
-	producer_grpc.RegisterTaskServiceServer(grpcServer, server)
+	prod_grpc.RegisterTaskServiceServer(grpcServer, server)
 
 	log.Println("Server is running on port 8082...")
 	if err := grpcServer.Serve(listener); err != nil {
@@ -64,15 +64,15 @@ func Listen(taskChan chan *sqlc.Task) {
 	}
 }
 
-func mapGrpcToSqlc(state producer_grpc.TaskState) sqlc.TaskState {
+func mapGrpcToSqlc(state prod_grpc.TaskState) sqlc.TaskState {
 	switch state {
-	case producer_grpc.TaskState_PENDING:
+	case prod_grpc.TaskState_PENDING:
 		return sqlc.TaskStatePending
-	case producer_grpc.TaskState_IN_PROGRESS:
-		return sqlc.TaskStateInProgress
-	case producer_grpc.TaskState_COMPLETED:
-		return sqlc.TaskStateCompleted
-	case producer_grpc.TaskState_FAILED:
+	case prod_grpc.TaskState_PROCESSING:
+		return sqlc.TaskStateProcessing
+	case prod_grpc.TaskState_DONE:
+		return sqlc.TaskStateDone
+	case prod_grpc.TaskState_FAILED:
 		return sqlc.TaskStateFailed
 	default:
 		log.Fatalf("Unexpected TaskState value: %v", state)

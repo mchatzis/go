@@ -1,4 +1,4 @@
-package main
+package producer
 
 import (
 	"log"
@@ -6,14 +6,14 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/mchatzis/go/producer/db"
-	"github.com/mchatzis/go/producer/db/sqlc"
-	"github.com/mchatzis/go/producer/grpc"
+	"github.com/mchatzis/go/producer/internal/db"
+	"github.com/mchatzis/go/producer/internal/grpc"
+	"github.com/mchatzis/go/producer/pkg/sqlc"
 )
 
 const MaxBacklog int = 50
 
-func Run(pool *pgxpool.Pool) {
+func Produce(pool *pgxpool.Pool) {
 	queries := sqlc.New(pool)
 	time.Sleep(time.Second)
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))

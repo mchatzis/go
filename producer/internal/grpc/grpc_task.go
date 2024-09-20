@@ -5,7 +5,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/mchatzis/go/producer/db/sqlc"
+	prod_grpc "github.com/mchatzis/go/producer/pkg/grpc"
+	"github.com/mchatzis/go/producer/pkg/sqlc"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -16,12 +17,12 @@ type TaskError struct {
 	Err  error
 }
 
-func SendTask(client TaskServiceClient, task sqlc.Task, errorChan chan<- TaskError) {
+func SendTask(client prod_grpc.TaskServiceClient, task sqlc.Task, errorChan chan<- TaskError) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
 	grpcState := mapTaskState(task.State)
-	_, err := client.SendTask(ctx, &Task{
+	_, err := client.SendTask(ctx, &prod_grpc.Task{
 		Id:             task.ID,
 		Type:           task.Type,
 		Value:          task.Value,
@@ -46,23 +47,23 @@ func SendTasks(taskChan <-chan sqlc.Task, errorChan chan<- TaskError) {
 	}
 	defer conn.Close()
 
-	client := NewTaskServiceClient(conn)
+	client := prod_grpc.NewTaskServiceClient(conn)
 
 	for task := range taskChan {
 		SendTask(client, task, errorChan)
 	}
 }
 
-func mapTaskState(state sqlc.TaskState) TaskState {
+func mapTaskState(state sqlc.TaskState) prod_grpc.TaskState {
 	switch state {
 	case sqlc.TaskStatePending:
-		return TaskState_PENDING
-	case sqlc.TaskStateInProgress:
-		return TaskState_IN_PROGRESS
-	case sqlc.TaskStateCompleted:
-		return TaskState_COMPLETED
+		return prod_grpc.TaskState_PENDING
+	case sqlc.TaskStateProcessing:
+		return prod_grpc.TaskState_PROCESSING
+	case sqlc.TaskStateDone:
+		return prod_grpc.TaskState_DONE
 	case sqlc.TaskStateFailed:
-		return TaskState_FAILED
+		return prod_grpc.TaskState_FAILED
 	default:
 		panic("Task state failed to convert to grpc.TaskState")
 	}

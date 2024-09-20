@@ -5,7 +5,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/mchatzis/go/producer/db"
+	"github.com/mchatzis/go/producer/internal/db"
+	"github.com/mchatzis/go/producer/internal/producer"
 )
 
 func main() {
@@ -16,7 +17,7 @@ func main() {
 	}
 	defer connection.Close()
 
-	Run(connection.Pool)
+	producer.Produce(connection.Pool)
 
 	for {
 		time.Sleep(5 * time.Second)

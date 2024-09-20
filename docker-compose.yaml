@@ -24,6 +24,7 @@ services:
     container_name: producer
     build:
       context: ./producer
+      dockerfile: ./producer/build
     env_file:
       - .env
     ports:
@@ -41,6 +42,7 @@ services:
     container_name: consumer
     build:
       context: ./consumer
+      dockerfile: ./consumer/build
     env_file:
       - .env
     ports:
