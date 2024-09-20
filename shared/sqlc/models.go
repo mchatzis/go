@@ -13,8 +13,8 @@ type TaskState string
 
 const (
 	TaskStatePending    TaskState = "pending"
-	TaskStateInProgress TaskState = "in_progress"
-	TaskStateCompleted  TaskState = "completed"
+	TaskStateProcessing TaskState = "processing"
+	TaskStateDone       TaskState = "done"
 	TaskStateFailed     TaskState = "failed"
 )
 

@@ -1,4 +1,4 @@
-CREATE TYPE task_state AS ENUM ('pending', 'in_progress', 'completed', 'failed');
+CREATE TYPE task_state AS ENUM ('pending', 'processing', 'done', 'failed');
 
 CREATE TABLE tasks (
     ID INT PRIMARY KEY,
