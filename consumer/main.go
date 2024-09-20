@@ -12,7 +12,7 @@ import (
 	"github.com/mchatzis/go/producer/db/sqlc"
 )
 
-const BufferSize = 100
+const BufferSize = 1
 
 func main() {
 	connection := &db.Connection{}
@@ -35,14 +35,21 @@ func main() {
 	for i := 0; i < 15; i++ {
 		go processTask(taskProcessChanIn, taskProcessChanOut)
 		go UpdateTaskState(taskUpdateToInProgressChanIn, taskUpdateToInProgressChanOut, sqlc.TaskStateInProgress, queries)
-		go regroupTasks(taskProcessChanOut, taskUpdateToInProgressChanOut, taskUpdateToCompletedChanIn, &doneUnmatchedTasks, queries)
+		go regroupTasks(taskProcessChanOut, taskUpdateToInProgressChanOut, taskUpdateToCompletedChanIn, &doneUnmatchedTasks)
 		go UpdateTaskState(taskUpdateToCompletedChanIn, taskUpdateToCompletedChanOut, sqlc.TaskStateCompleted, queries)
+		go logCompletedTasks(taskUpdateToCompletedChanOut)
 	}
 
 	select {}
 }
 
-func regroupTasks(taskChanIn chan *sqlc.Task, taskChanIn2 chan *sqlc.Task, taskChanOut chan *sqlc.Task, doneUnmatchedTasks *sync.Map, queries *sqlc.Queries) {
+func logCompletedTasks(taskChanIn chan *sqlc.Task) {
+	for task := range taskChanIn {
+		log.Printf("Completed processing and updating task: %+v", task.ID)
+	}
+}
+
+func regroupTasks(taskChanIn chan *sqlc.Task, taskChanIn2 chan *sqlc.Task, taskChanOut chan *sqlc.Task, doneUnmatchedTasks *sync.Map) {
 	// Uses a map to match tasks incoming from the processing and update-to-in-progress channels.
 	// Ensures task has both been processed and updated in db, before forwarding to another db update.
 	for {
@@ -81,5 +88,6 @@ func UpdateTaskState(taskChanIn chan *sqlc.Task, taskChanOut chan *sqlc.Task, st
 		if err != nil {
 			log.Printf("Failed to update task state: %v", err)
 		}
+		taskChanOut <- task
 	}
 }
