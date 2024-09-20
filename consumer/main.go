@@ -12,7 +12,7 @@ import (
 	"github.com/mchatzis/go/producer/db/sqlc"
 )
 
-const BufferSize = 1024
+const BufferSize = 100
 
 func main() {
 	connection := &db.Connection{}
@@ -48,10 +48,8 @@ func regroupTasks(taskChanIn chan *sqlc.Task, taskChanIn2 chan *sqlc.Task, taskC
 	for {
 		select {
 		case task := <-taskChanIn:
-			log.Printf("taskProcessChanOut: %+v", *task)
 			forwardIfInMap(task, taskChanOut, doneUnmatchedTasks)
 		case task := <-taskChanIn2:
-			log.Printf("taskUpdateToInProgressChanOut: %+v", *task)
 			forwardIfInMap(task, taskChanOut, doneUnmatchedTasks)
 		}
 	}
@@ -70,7 +68,6 @@ func processTask(taskChanIn chan *sqlc.Task, taskChanOut chan *sqlc.Task) {
 	for task := range taskChanIn {
 		log.Printf("Processing task: %+v", *task)
 		time.Sleep(time.Duration(task.Value) * time.Millisecond)
-		log.Printf("Finished processing task: %+v", *task)
 		taskChanOut <- task
 	}
 }
@@ -84,7 +81,5 @@ func UpdateTaskState(taskChanIn chan *sqlc.Task, taskChanOut chan *sqlc.Task, st
 		if err != nil {
 			log.Printf("Failed to update task state: %v", err)
 		}
-		log.Printf("Updated task state to %+v for task: %+v", state, *task)
-		taskChanOut <- task
 	}
 }

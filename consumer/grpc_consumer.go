@@ -13,6 +13,8 @@ import (
 	producer_grpc "github.com/mchatzis/go/producer/grpc"
 )
 
+const rateLimiterMultiplier int = 500
+
 type server struct {
 	producer_grpc.UnimplementedTaskServiceServer
 	taskChan chan *sqlc.Task
@@ -38,9 +40,7 @@ func ListenForTasks(taskProcessChan chan *sqlc.Task, taskUpdateToInProgressChan 
 	go Listen(taskListenChan)
 
 	for task := range taskListenChan {
-		log.Printf("Received task: %+v", task)
-		log.Printf("Waiting for 500ms: %+v", task)
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(time.Duration(rateLimiterMultiplier) * time.Millisecond)
 		taskProcessChan <- task
 		taskUpdateToInProgressChan <- task
 	}

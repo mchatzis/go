@@ -26,7 +26,7 @@ func Run(pool *pgxpool.Pool) {
 	go grpc.SendTasks(sendTaskChan, errorChan)
 
 	var failedSaveTasks []sqlc.Task
-	go logErrors(errorChan, failedSaveTasks)
+	go handleErrors(errorChan, failedSaveTasks)
 
 	for i := 1; ; i++ {
 		task := generateTask(r, i)
@@ -65,7 +65,7 @@ func generateTask(r *rand.Rand, id int) sqlc.Task {
 	return task
 }
 
-func logErrors(errorChan chan grpc.TaskError, failedSaveTasks []sqlc.Task) {
+func handleErrors(errorChan chan grpc.TaskError, failedSaveTasks []sqlc.Task) {
 	for taskError := range errorChan {
 		log.Printf("Error sending/saving task ID %d: %v\n", taskError.Task.ID, taskError.Err)
 		failedSaveTasks = append(failedSaveTasks, taskError.Task)
