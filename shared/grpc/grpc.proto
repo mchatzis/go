@@ -6,8 +6,8 @@ import "google/protobuf/empty.proto";
 
 enum TaskState {
     PENDING = 0;
-    IN_PROGRESS = 1;
-    COMPLETED = 2;
+    PROCESSING = 1;
+    DONE = 2;
     FAILED = 3;
 }
 
