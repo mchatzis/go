@@ -20,13 +20,9 @@ func Produce(pool *pgxpool.Pool) {
 
 	saveTaskChan := make(chan sqlc.Task, MaxBacklog)
 	sendTaskChan := make(chan sqlc.Task, MaxBacklog)
-	errorChan := make(chan grpc.TaskError, 100)
 
-	go saveTasks(queries, saveTaskChan, errorChan)
-	go grpc.SendTasks(sendTaskChan, errorChan)
-
-	var failedSaveTasks []sqlc.Task
-	go handleErrors(errorChan, failedSaveTasks)
+	go saveTasks(queries, saveTaskChan)
+	go grpc.SendTasks(sendTaskChan)
 
 	for i := 1; ; i++ {
 		task := generateTask(r, i)
@@ -37,14 +33,11 @@ func Produce(pool *pgxpool.Pool) {
 	}
 }
 
-func saveTasks(queries *sqlc.Queries, taskChan <-chan sqlc.Task, errorChan chan<- grpc.TaskError) {
+func saveTasks(queries *sqlc.Queries, taskChan <-chan sqlc.Task) {
 	for task := range taskChan {
 		err := db.CreateTask(queries, task)
 		if err != nil {
-			errorChan <- struct {
-				Task sqlc.Task
-				Err  error
-			}{Task: task, Err: err}
+			log.Printf("Failed to save task %v with error: %v", task.ID, err)
 		}
 	}
 }
@@ -63,11 +56,4 @@ func generateTask(r *rand.Rand, id int) sqlc.Task {
 	}
 
 	return task
-}
-
-func handleErrors(errorChan chan grpc.TaskError, failedSaveTasks []sqlc.Task) {
-	for taskError := range errorChan {
-		log.Printf("Error sending/saving task ID %d: %v\n", taskError.Task.ID, taskError.Err)
-		failedSaveTasks = append(failedSaveTasks, taskError.Task)
-	}
 }
