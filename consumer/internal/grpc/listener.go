@@ -48,7 +48,7 @@ func ListenForTasks(taskChanOut chan *sqlc.Task, taskChanOut2 chan *sqlc.Task) {
 }
 
 func listen(taskChan chan *sqlc.Task) {
-	listener, err := net.Listen("tcp", ":8082")
+	listener, err := net.Listen("tcp", ":50051")
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
 	}
@@ -59,7 +59,7 @@ func listen(taskChan chan *sqlc.Task) {
 	grpcServer := grpc.NewServer()
 	prod_grpc.RegisterTaskServiceServer(grpcServer, server)
 
-	log.Println("Server is running on port 8082...")
+	log.Println("Server is running on port 50051...")
 	if err := grpcServer.Serve(listener); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}

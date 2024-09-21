@@ -13,7 +13,7 @@ import (
 )
 
 func SendTasks(taskChan <-chan sqlc.Task) {
-	conn, err := grpc.NewClient("consumer:8082", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient("consumer:50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("Failed to connect: %v", err)
 	}
