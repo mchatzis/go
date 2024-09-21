@@ -105,3 +105,13 @@ func (l *logger) Errorf(format string, v ...interface{}) {
 		l.errorLogger.Printf(format, v...)
 	}
 }
+
+func (l *logger) Fatal(v ...interface{}) {
+	l.errorLogger.Println(v...)
+	os.Exit(1)
+}
+
+func (l *logger) Fatalf(format string, v ...interface{}) {
+	l.errorLogger.Printf(format, v...)
+	os.Exit(1)
+}
