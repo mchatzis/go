@@ -6,7 +6,7 @@ services:
       - .env
     volumes:
       - postgres-data:/var/lib/postgresql/data
-      - ./producer/db/sqlc/init-db:/docker-entrypoint-initdb.d
+      - ./producer/pkg/sqlc/init-db:/docker-entrypoint-initdb.d
     networks:
       - app-network
 
@@ -24,7 +24,7 @@ services:
     container_name: producer
     build:
       context: ./producer
-      dockerfile: ./producer/build
+      dockerfile: ./build/Dockerfile
     env_file:
       - .env
     ports:
@@ -42,7 +42,7 @@ services:
     container_name: consumer
     build:
       context: ./consumer
-      dockerfile: ./consumer/build
+      dockerfile: ./build/Dockerfile
     env_file:
       - .env
     ports:

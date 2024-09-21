@@ -1,25 +1,23 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
-	"time"
 
-	"github.com/mchatzis/go/producer/internal/db"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mchatzis/go/producer/internal/producer"
 )
 
 func main() {
-	connection := &db.Connection{}
-	if err := connection.Init(); err != nil {
+	dbpool, err := pgxpool.New(context.Background(), os.Getenv("POSTGRES_URL"))
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
-	defer connection.Close()
+	defer dbpool.Close()
 
-	producer.Produce(connection.Pool)
+	go producer.Produce(dbpool)
 
-	for {
-		time.Sleep(5 * time.Second)
-	}
+	select {}
 }

@@ -13,7 +13,7 @@ import (
 	"github.com/mchatzis/go/producer/pkg/sqlc"
 )
 
-const rateLimiterMultiplier int = 500
+const rateLimiterMultiplier int = 1
 
 type server struct {
 	prod_grpc.UnimplementedTaskServiceServer
@@ -37,16 +37,17 @@ func (s *server) SendTask(ctx context.Context, grpc_task *prod_grpc.Task) (*empt
 
 func ListenForTasks(taskChanOut chan *sqlc.Task, taskChanOut2 chan *sqlc.Task) {
 	taskListenChan := make(chan *sqlc.Task)
-	go Listen(taskListenChan)
+	go listen(taskListenChan)
 
 	for task := range taskListenChan {
 		time.Sleep(time.Duration(rateLimiterMultiplier) * time.Millisecond)
+		log.Printf("Received task: %+v", task.ID)
 		taskChanOut <- task
 		taskChanOut2 <- task
 	}
 }
 
-func Listen(taskChan chan *sqlc.Task) {
+func listen(taskChan chan *sqlc.Task) {
 	listener, err := net.Listen("tcp", ":8082")
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)

@@ -4,7 +4,6 @@ go 1.23.1
 
 require (
 	github.com/jackc/pgx/v5 v5.7.1
-	github.com/mchatzis/go/shared v0.0.0-20240920160211-3f9813436714
 	google.golang.org/grpc v1.67.0
 	google.golang.org/protobuf v1.34.2
 )

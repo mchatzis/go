@@ -10,24 +10,24 @@ import (
 	"github.com/mchatzis/go/producer/pkg/sqlc"
 )
 
-const BufferSize = 1
+const bufferSize = 1
 
-func consume(queries *sqlc.Queries) {
+func Consume(queries *sqlc.Queries) {
 	var processedUnmatchedTasks sync.Map
 
-	taskUpdateToProcessingStateChanIn := make(chan *sqlc.Task, BufferSize)
-	taskUpdateToProcessingStateChanOut := make(chan *sqlc.Task, BufferSize)
-	taskProcessChanIn := make(chan *sqlc.Task, BufferSize)
-	taskProcessChanOut := make(chan *sqlc.Task, BufferSize)
-	taskUpdateToDoneStateChanIn := make(chan *sqlc.Task, BufferSize)
-	taskUpdateToDoneStateChanOut := make(chan *sqlc.Task, BufferSize)
+	taskUpdateToProcessingStateChanIn := make(chan *sqlc.Task, bufferSize)
+	taskUpdateToProcessingStateChanOut := make(chan *sqlc.Task, bufferSize)
+	taskProcessChanIn := make(chan *sqlc.Task, bufferSize)
+	taskProcessChanOut := make(chan *sqlc.Task, bufferSize)
+	taskUpdateToDoneStateChanIn := make(chan *sqlc.Task, bufferSize)
+	taskUpdateToDoneStateChanOut := make(chan *sqlc.Task, bufferSize)
 
 	go grpc.ListenForTasks(taskProcessChanIn, taskUpdateToProcessingStateChanIn)
 	for i := 0; i < 15; i++ {
 		go processTask(taskProcessChanIn, taskProcessChanOut)
-		go UpdateTaskState(taskUpdateToProcessingStateChanIn, taskUpdateToProcessingStateChanOut, sqlc.TaskStateProcessing, queries)
+		go updateTaskState(taskUpdateToProcessingStateChanIn, taskUpdateToProcessingStateChanOut, sqlc.TaskStateProcessing, queries)
 		go matchTasks(taskProcessChanOut, taskUpdateToProcessingStateChanOut, taskUpdateToDoneStateChanIn, &processedUnmatchedTasks)
-		go UpdateTaskState(taskUpdateToDoneStateChanIn, taskUpdateToDoneStateChanOut, sqlc.TaskStateDone, queries)
+		go updateTaskState(taskUpdateToDoneStateChanIn, taskUpdateToDoneStateChanOut, sqlc.TaskStateDone, queries)
 		go logDoneTasks(taskUpdateToDoneStateChanOut)
 	}
 }
@@ -57,13 +57,13 @@ func tryMatchTask(task *sqlc.Task, taskChanOut chan *sqlc.Task, unmatchedTasks *
 
 func processTask(taskChanIn chan *sqlc.Task, taskChanOut chan *sqlc.Task) {
 	for task := range taskChanIn {
-		log.Printf("Processing task: %+v", *task)
 		time.Sleep(time.Duration(task.Value) * time.Millisecond)
+		log.Printf("Processing task: %+v", task.ID)
 		taskChanOut <- task
 	}
 }
 
-func UpdateTaskState(taskChanIn chan *sqlc.Task, taskChanOut chan *sqlc.Task, state sqlc.TaskState, queries *sqlc.Queries) {
+func updateTaskState(taskChanIn chan *sqlc.Task, taskChanOut chan *sqlc.Task, state sqlc.TaskState, queries *sqlc.Queries) {
 	for task := range taskChanIn {
 		err := queries.UpdateTaskState(context.Background(), sqlc.UpdateTaskStateParams{
 			State: state,
@@ -72,6 +72,7 @@ func UpdateTaskState(taskChanIn chan *sqlc.Task, taskChanOut chan *sqlc.Task, st
 		if err != nil {
 			log.Printf("Failed to update task state: %v", err)
 		}
+		log.Printf("Updated task to %v: %v", state, task.ID)
 		taskChanOut <- task
 	}
 }

@@ -17,7 +17,21 @@ type TaskError struct {
 	Err  error
 }
 
-func SendTask(client prod_grpc.TaskServiceClient, task sqlc.Task, errorChan chan<- TaskError) {
+func SendTasks(taskChan <-chan sqlc.Task, errorChan chan<- TaskError) {
+	conn, err := grpc.NewClient("consumer:8082", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("Failed to connect: %v", err)
+	}
+	defer conn.Close()
+
+	client := prod_grpc.NewTaskServiceClient(conn)
+
+	for task := range taskChan {
+		sendTask(client, task, errorChan)
+	}
+}
+
+func sendTask(client prod_grpc.TaskServiceClient, task sqlc.Task, errorChan chan<- TaskError) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
@@ -37,20 +51,6 @@ func SendTask(client prod_grpc.TaskServiceClient, task sqlc.Task, errorChan chan
 			Err  error
 		}{Task: task, Err: err}
 		return
-	}
-}
-
-func SendTasks(taskChan <-chan sqlc.Task, errorChan chan<- TaskError) {
-	conn, err := grpc.NewClient("consumer:8082", grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		log.Fatalf("Failed to connect: %v", err)
-	}
-	defer conn.Close()
-
-	client := prod_grpc.NewTaskServiceClient(conn)
-
-	for task := range taskChan {
-		SendTask(client, task, errorChan)
 	}
 }
 
