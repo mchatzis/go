@@ -14,6 +14,7 @@ const (
 	INFO
 	WARN
 	ERROR
+	FATAL
 )
 
 type logger struct {
@@ -21,6 +22,7 @@ type logger struct {
 	infoLogger  *log.Logger
 	warnLogger  *log.Logger
 	errorLogger *log.Logger
+	fatalLogger *log.Logger
 	level       LogLevel
 }
 
@@ -42,6 +44,7 @@ func newLogger(out io.Writer, level LogLevel) *logger {
 		infoLogger:  log.New(out, "INFO:  ", log.Ldate|log.Ltime|log.Lshortfile),
 		warnLogger:  log.New(out, "WARN:  ", log.Ldate|log.Ltime|log.Lshortfile),
 		errorLogger: log.New(out, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile),
+		fatalLogger: log.New(out, "FATAL: ", log.Ldate|log.Ltime|log.Lshortfile),
 		level:       level,
 	}
 }
@@ -56,6 +59,7 @@ func SetOutput(out io.Writer) {
 	logger.infoLogger.SetOutput(out)
 	logger.warnLogger.SetOutput(out)
 	logger.errorLogger.SetOutput(out)
+	logger.fatalLogger.SetOutput(out)
 }
 
 func (l *logger) Debug(v ...interface{}) {
@@ -107,11 +111,11 @@ func (l *logger) Errorf(format string, v ...interface{}) {
 }
 
 func (l *logger) Fatal(v ...interface{}) {
-	l.errorLogger.Println(v...)
+	l.fatalLogger.Println(v...)
 	os.Exit(1)
 }
 
 func (l *logger) Fatalf(format string, v ...interface{}) {
-	l.errorLogger.Printf(format, v...)
+	l.fatalLogger.Printf(format, v...)
 	os.Exit(1)
 }
