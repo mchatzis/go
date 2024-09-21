@@ -44,7 +44,7 @@ func newLogger(out io.Writer, level LogLevel) *logger {
 		infoLogger:  log.New(out, "INFO:  ", log.Ldate|log.Ltime|log.Lshortfile),
 		warnLogger:  log.New(out, "WARN:  ", log.Ldate|log.Ltime|log.Lshortfile),
 		errorLogger: log.New(out, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile),
-		fatalLogger: log.New(out, "FATAL: ", log.Ldate|log.Ltime|log.Lshortfile),
+		fatalLogger: log.New(os.Stderr, "FATAL: ", log.Ldate|log.Ltime|log.Lshortfile),
 		level:       level,
 	}
 }

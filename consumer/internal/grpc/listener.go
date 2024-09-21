@@ -2,7 +2,6 @@ package grpc
 
 import (
 	"context"
-	"log"
 	"net"
 	"time"
 
@@ -10,10 +9,13 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	prod_grpc "github.com/mchatzis/go/producer/pkg/grpc"
+	"github.com/mchatzis/go/producer/pkg/logging"
 	"github.com/mchatzis/go/producer/pkg/sqlc"
 )
 
-const rateLimiterMultiplier int = 1
+const rateLimiterMultiplier int = 10
+
+var logger = logging.GetLogger()
 
 type server struct {
 	prod_grpc.UnimplementedTaskServiceServer
@@ -37,20 +39,21 @@ func (s *server) SendTask(ctx context.Context, grpc_task *prod_grpc.Task) (*empt
 
 func ListenForTasks(taskChanOut chan *sqlc.Task, taskChanOut2 chan *sqlc.Task) {
 	taskListenChan := make(chan *sqlc.Task)
-	go listen(taskListenChan)
+	go startGrpcServer(taskListenChan)
 
 	for task := range taskListenChan {
 		time.Sleep(time.Duration(rateLimiterMultiplier) * time.Millisecond)
-		log.Printf("Received task: %+v", task.ID)
+		logger.Debugf("Received task: %+v", task.ID)
 		taskChanOut <- task
 		taskChanOut2 <- task
 	}
 }
 
-func listen(taskChan chan *sqlc.Task) {
+func startGrpcServer(taskChan chan *sqlc.Task) {
+	logger.Info("Opening tcp connection...")
 	listener, err := net.Listen("tcp", ":50051")
 	if err != nil {
-		log.Fatalf("Failed to listen: %v", err)
+		logger.Fatalf("Failed to listen tcp on port 50051 with error: %v", err)
 	}
 
 	server := &server{
@@ -59,9 +62,9 @@ func listen(taskChan chan *sqlc.Task) {
 	grpcServer := grpc.NewServer()
 	prod_grpc.RegisterTaskServiceServer(grpcServer, server)
 
-	log.Println("Server is running on port 50051...")
+	logger.Info("Listening for tasks on port 50051")
 	if err := grpcServer.Serve(listener); err != nil {
-		log.Fatalf("Server failed: %v", err)
+		logger.Fatalf("Grpc server failed: %v", err)
 	}
 }
 
@@ -76,7 +79,7 @@ func mapGrpcToSqlc(state prod_grpc.TaskState) sqlc.TaskState {
 	case prod_grpc.TaskState_FAILED:
 		return sqlc.TaskStateFailed
 	default:
-		log.Fatalf("Unexpected TaskState value: %v", state)
+		logger.Fatalf("Unexpected TaskState value: %v", state)
 		return ""
 	}
 }

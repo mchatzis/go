@@ -12,4 +12,4 @@ RUN go build -o main ./cmd/producer
 
 EXPOSE 8081
 
-CMD ["./main"]
+CMD ./main --loglevel $LOG_LEVEL

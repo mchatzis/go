@@ -2,25 +2,29 @@ package grpc
 
 import (
 	"context"
-	"log"
 	"time"
 
 	prod_grpc "github.com/mchatzis/go/producer/pkg/grpc"
+	"github.com/mchatzis/go/producer/pkg/logging"
 	"github.com/mchatzis/go/producer/pkg/sqlc"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
+var logger = logging.GetLogger()
+
 func SendTasks(taskChan <-chan sqlc.Task) {
 	conn, err := grpc.NewClient("consumer:50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Fatalf("Failed to connect: %v", err)
+		logger.Fatalf("Failed to connect to GRPC server: %v", err)
 	}
 	defer conn.Close()
 
 	client := prod_grpc.NewTaskServiceClient(conn)
 
+	logger.Info("Grpc client is running on port 50051...")
+	logger.Info("Successfully connected to GRPC server...")
 	for task := range taskChan {
 		sendTask(client, task)
 	}
@@ -40,9 +44,10 @@ func sendTask(client prod_grpc.TaskServiceClient, task sqlc.Task) {
 		LastUpdateTime: task.Lastupdatetime,
 	})
 	if err != nil {
-		log.Printf("Error sending task: %v with error %v", task.ID, err)
+		logger.Errorf("Error sending task: %v with error %v", task.ID, err)
 		return
 	}
+	logger.Debugf("Grpc sent task: %v", task.ID)
 }
 
 func mapTaskState(state sqlc.TaskState) prod_grpc.TaskState {
