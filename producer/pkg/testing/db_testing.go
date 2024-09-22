@@ -1,4 +1,4 @@
-package db
+package testing
 
 import (
 	"database/sql"
@@ -29,24 +29,15 @@ func GetDB() *TestDB {
 		}
 
 		testDbInstance = &TestDB{DB: db}
-
-		schemaQuery := `
-			CREATE TABLE tasks (
-				ID INTEGER UNIQUE NOT NULL CHECK (ID > 0),
-				Type INTEGER CHECK (Type BETWEEN 0 AND 9) NOT NULL,
-				Value INTEGER CHECK (Value BETWEEN 0 AND 99) NOT NULL,
-				State TEXT CHECK (State IN ('pending', 'processing', 'done', 'failed')) NOT NULL,
-				CreationTime REAL NOT NULL,
-				LastUpdateTime REAL NOT NULL
-			);
-		`
-
-		_, err = db.Exec(schemaQuery)
-		if err != nil {
-			logger.Fatalf("Failed to create table: %v", err)
-		}
 	})
 	return testDbInstance
+}
+
+func (db *TestDB) SetSchema(schema string) {
+	_, err := db.Exec(schema)
+	if err != nil {
+		logger.Fatalf("Failed to create table: %v", err)
+	}
 }
 
 func (db *TestDB) TearDownDB() {

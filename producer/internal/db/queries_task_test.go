@@ -5,17 +5,28 @@ import (
 	"os"
 	"testing"
 	"time"
+
+	prod_testing "github.com/mchatzis/go/producer/pkg/testing"
 )
 
 func TestMain(m *testing.M) {
-	db := GetDB()
+	db := prod_testing.GetDB()
+	schema := `CREATE TABLE tasks (
+		ID INTEGER UNIQUE NOT NULL CHECK (ID > 0),
+		Type INTEGER CHECK (Type BETWEEN 0 AND 9) NOT NULL,
+		Value INTEGER CHECK (Value BETWEEN 0 AND 99) NOT NULL,
+		State TEXT CHECK (State IN ('pending', 'processing', 'done', 'failed')) NOT NULL,
+		CreationTime REAL NOT NULL,
+		LastUpdateTime REAL NOT NULL
+	);`
+	db.SetSchema(schema)
 	code := m.Run()
 	db.TearDownDB()
 	os.Exit(code)
 }
 
 func TestCreateTask(t *testing.T) {
-	db := GetDB()
+	db := prod_testing.GetDB()
 
 	now := float64(time.Now().UnixNano()) / 1e9
 
