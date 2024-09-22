@@ -27,15 +27,15 @@ type logger struct {
 }
 
 var (
-	singleton *logger
-	once      sync.Once
+	loggerInstance *logger
+	once           sync.Once
 )
 
 func GetLogger() *logger {
 	once.Do(func() {
-		singleton = newLogger(os.Stdout, INFO)
+		loggerInstance = newLogger(os.Stdout, INFO)
 	})
-	return singleton
+	return loggerInstance
 }
 
 func newLogger(out io.Writer, level LogLevel) *logger {
