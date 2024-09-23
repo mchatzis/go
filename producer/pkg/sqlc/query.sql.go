@@ -9,6 +9,17 @@ import (
 	"context"
 )
 
+const countTasksInState = `-- name: CountTasksInState :one
+SELECT COUNT(*) FROM tasks WHERE state = $1
+`
+
+func (q *Queries) CountTasksInState(ctx context.Context, state TaskState) (int64, error) {
+	row := q.db.QueryRow(ctx, countTasksInState, state)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createTask = `-- name: CreateTask :exec
 INSERT INTO tasks (id, type, value, state, creationtime, lastupdatetime) VALUES ($1, $2, $3, $4, $5, $6)
 `
@@ -34,45 +45,25 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) error {
 	return err
 }
 
-const getTaskById = `-- name: GetTaskById :one
-SELECT id, type, value, state, creationtime, lastupdatetime FROM tasks WHERE id = $1
+const getCountDoneTasksByType = `-- name: GetCountDoneTasksByType :many
+SELECT type, COUNT(*) FROM tasks WHERE state='done' GROUP BY type ORDER BY type
 `
 
-func (q *Queries) GetTaskById(ctx context.Context, id int32) (Task, error) {
-	row := q.db.QueryRow(ctx, getTaskById, id)
-	var i Task
-	err := row.Scan(
-		&i.ID,
-		&i.Type,
-		&i.Value,
-		&i.State,
-		&i.Creationtime,
-		&i.Lastupdatetime,
-	)
-	return i, err
+type GetCountDoneTasksByTypeRow struct {
+	Type  int32
+	Count int64
 }
 
-const getTasks = `-- name: GetTasks :many
-SELECT id, type, value, state, creationtime, lastupdatetime FROM tasks
-`
-
-func (q *Queries) GetTasks(ctx context.Context) ([]Task, error) {
-	rows, err := q.db.Query(ctx, getTasks)
+func (q *Queries) GetCountDoneTasksByType(ctx context.Context) ([]GetCountDoneTasksByTypeRow, error) {
+	rows, err := q.db.Query(ctx, getCountDoneTasksByType)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Task
+	var items []GetCountDoneTasksByTypeRow
 	for rows.Next() {
-		var i Task
-		if err := rows.Scan(
-			&i.ID,
-			&i.Type,
-			&i.Value,
-			&i.State,
-			&i.Creationtime,
-			&i.Lastupdatetime,
-		); err != nil {
+		var i GetCountDoneTasksByTypeRow
+		if err := rows.Scan(&i.Type, &i.Count); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -83,29 +74,62 @@ func (q *Queries) GetTasks(ctx context.Context) ([]Task, error) {
 	return items, nil
 }
 
-const updateTask = `-- name: UpdateTask :exec
-UPDATE tasks SET id = $1, type = $2, value = $3, state = $4, lastupdatetime = $5 WHERE id = $6
+const getCountTasksByState = `-- name: GetCountTasksByState :many
+SELECT state, COUNT(*) FROM tasks GROUP BY state
 `
 
-type UpdateTaskParams struct {
-	ID             int32
-	Type           int32
-	Value          int32
-	State          TaskState
-	Lastupdatetime float64
-	ID_2           int32
+type GetCountTasksByStateRow struct {
+	State TaskState
+	Count int64
 }
 
-func (q *Queries) UpdateTask(ctx context.Context, arg UpdateTaskParams) error {
-	_, err := q.db.Exec(ctx, updateTask,
-		arg.ID,
-		arg.Type,
-		arg.Value,
-		arg.State,
-		arg.Lastupdatetime,
-		arg.ID_2,
-	)
-	return err
+func (q *Queries) GetCountTasksByState(ctx context.Context) ([]GetCountTasksByStateRow, error) {
+	rows, err := q.db.Query(ctx, getCountTasksByState)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetCountTasksByStateRow
+	for rows.Next() {
+		var i GetCountTasksByStateRow
+		if err := rows.Scan(&i.State, &i.Count); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getTotalValueDoneTasksByType = `-- name: GetTotalValueDoneTasksByType :many
+SELECT type, SUM(value) FROM tasks WHERE state='done' GROUP BY type ORDER BY type
+`
+
+type GetTotalValueDoneTasksByTypeRow struct {
+	Type int32
+	Sum  int64
+}
+
+func (q *Queries) GetTotalValueDoneTasksByType(ctx context.Context) ([]GetTotalValueDoneTasksByTypeRow, error) {
+	rows, err := q.db.Query(ctx, getTotalValueDoneTasksByType)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetTotalValueDoneTasksByTypeRow
+	for rows.Next() {
+		var i GetTotalValueDoneTasksByTypeRow
+		if err := rows.Scan(&i.Type, &i.Sum); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const updateTaskState = `-- name: UpdateTaskState :exec

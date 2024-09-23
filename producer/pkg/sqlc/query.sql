@@ -1,14 +1,17 @@
--- name: GetTasks :many
-SELECT * FROM tasks;
+-- name: CountTasksInState :one
+SELECT COUNT(*) FROM tasks WHERE state = $1;
 
--- name: GetTaskById :one
-SELECT * FROM tasks WHERE id = $1;
+-- name: GetTotalValueDoneTasksByType :many
+SELECT type, SUM(value) FROM tasks WHERE state='done' GROUP BY type ORDER BY type;
+
+-- name: GetCountDoneTasksByType :many
+SELECT type, COUNT(*) FROM tasks WHERE state='done' GROUP BY type ORDER BY type;
+
+-- name: GetCountTasksByState :many
+SELECT state, COUNT(*) FROM tasks GROUP BY state;
 
 -- name: CreateTask :exec
 INSERT INTO tasks (id, type, value, state, creationtime, lastupdatetime) VALUES ($1, $2, $3, $4, $5, $6);
-
--- name: UpdateTask :exec
-UPDATE tasks SET id = $1, type = $2, value = $3, state = $4, lastupdatetime = $5 WHERE id = $6;
 
 -- name: UpdateTaskState :exec
 UPDATE tasks SET state = $1 WHERE id = $2;

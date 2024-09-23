@@ -1,12 +1,7 @@
-- .env automatic find
-- automatically initialize database
 - db docker healthcheck
 - errorChan buffer of 100 can overflow. Need rethinking
 - Use .env for grpc host:port
 - Think which port to use for grpc
-- Understand context
-- Should SaveTasks be in the main package or the db package
-- Create TaskError in sqlc package
 - Understand when unbuffered vs buffered channels block + for c := range channel { } syntactic sugar. 
     What happens if I send two values to an unbuffered channel?
 - Graceful shutdown: In a production system, you'd want to implement a graceful shutdown mechanism
@@ -16,10 +11,12 @@
 - Scalability: For high-volume systems, you might consider using multiple worker goroutines to process tasks in parallel.
 - task_generator: Save and Send tasks might compete for the same errochannel
 - Review errors, determine when to panic
-- Extract shared microservice code
 - Use TaskStateFailed
 - Update task state not only in db but also in memory (i.e. *sqlc.Task)
-- Change TaskState to correct challenge values
-- Depending on rate of reception of tasks, buffer can overfill
 - Correct syntax for channel function parameters that are receive-only channels to taskChan <-chan sqlc.Task
-- Rename stuff
+- Understand context.Background()
+
+Done:
+- Extract shared microservice code
+- Rename, refactor
+- automatically initialize database

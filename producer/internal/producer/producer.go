@@ -4,7 +4,6 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mchatzis/go/producer/internal/db"
 	"github.com/mchatzis/go/producer/internal/grpc"
 	"github.com/mchatzis/go/producer/pkg/logging"
@@ -15,9 +14,7 @@ const MaxBacklog int = 50
 
 var logger = logging.GetLogger()
 
-func Produce(pool *pgxpool.Pool) {
-	queries := sqlc.New(pool)
-	time.Sleep(time.Second) //Wait a sec for postgres to spin up, should apply a healthcheck instead in the future
+func Produce(queries *sqlc.Queries) {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	saveTaskChan := make(chan sqlc.Task, MaxBacklog)
@@ -61,7 +58,9 @@ func saveTasks(queries *sqlc.Queries, taskChan <-chan sqlc.Task) {
 		err := db.CreateTask(queries, task)
 		if err != nil {
 			logger.Errorf("Failed to save task %v with error: %v", task.ID, err)
+		} else {
+			logger.Debugf("Created in db pending task: %v", task.ID)
 		}
-		logger.Debugf("Created in db pending task: %v", task.ID)
+
 	}
 }

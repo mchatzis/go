@@ -14,3 +14,15 @@ func CreateTask(queries *sqlc.Queries, task sqlc.Task) error {
 	}
 	return nil
 }
+
+func UpdateTaskState(queries *sqlc.Queries, id int32, state sqlc.TaskState) error {
+	params := sqlc.UpdateTaskStateParams{
+		ID:    id,
+		State: state,
+	}
+	err := queries.UpdateTaskState(context.Background(), params)
+	if err != nil {
+		return err
+	}
+	return nil
+}
