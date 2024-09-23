@@ -1,18 +1,20 @@
 package testing
 
 import (
-	"database/sql"
+	"context"
+	"os"
 	"sync"
 	"testing"
 
-	_ "github.com/mattn/go-sqlite3"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mchatzis/go/producer/pkg/logging"
 )
 
 var logger = logging.GetLogger()
 
 type TestDB struct {
-	*sql.DB
+	*pgxpool.Pool
 }
 
 var (
@@ -22,51 +24,54 @@ var (
 
 func GetDB() *TestDB {
 	once.Do(func() {
-		var err error
-		db, err := sql.Open("sqlite3", ":memory:")
+		ctx := context.Background()
+		pool, err := pgxpool.New(ctx, os.Getenv("DB_URL"))
 		if err != nil {
-			logger.Fatalf("Failed to open database: %v", err)
+			logger.Fatalf("Failed to create connection pool: %v", err)
 		}
 
-		testDbInstance = &TestDB{DB: db}
+		testDbInstance = &TestDB{Pool: pool}
 	})
 	return testDbInstance
 }
 
 func (db *TestDB) SetSchema(schema string) {
-	_, err := db.Exec(schema)
+	_, err := db.Exec(context.Background(), schema)
 	if err != nil {
 		logger.Fatalf("Failed to create table: %v", err)
 	}
 }
 
-func (db *TestDB) TearDownDB() {
-	if db != nil {
-		if err := db.Close(); err != nil {
-			logger.Fatalf("Failed to close database: %v", err)
+func (db *TestDB) TearDownDB(dropQuery string) {
+	if db != nil && db.Pool != nil {
+		_, err := db.Exec(context.Background(), dropQuery)
+		if err != nil {
+			logger.Fatalf("Failed to tear down DB: %v", err)
 		}
-		db = nil
+		db.Exec(context.Background(), "SELECT * FROM tasks;")
+		db.Pool.Close()
 	}
 }
 
-func (db *TestDB) WithTx(t *testing.T, commit bool, testFunc func(*testing.T, *sql.Tx) error) error {
-	tx, err := db.Begin()
+func (db *TestDB) WithTx(t *testing.T, commit bool, testFunc func(*testing.T, pgx.Tx) error) error {
+	ctx := context.Background()
+	tx, err := db.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		t.Fatalf("Failed to begin transaction: %v", err)
 	}
 
 	defer func() {
 		if r := recover(); r != nil {
-			tx.Rollback()
+			tx.Rollback(ctx)
 			t.Fatalf("Panic in test: %v", r)
 		} else if commit {
-			err = tx.Commit()
+			err = tx.Commit(ctx)
 			if err != nil {
 				t.Fatalf("Failed to commit transaction: %v", err)
 			}
 		} else {
-			err = tx.Rollback()
-			if err != nil && err != sql.ErrTxDone {
+			err = tx.Rollback(ctx)
+			if err != nil && err != pgx.ErrTxClosed {
 				t.Fatalf("Failed to rollback transaction: %v", err)
 			}
 		}

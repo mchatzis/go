@@ -18,7 +18,7 @@ func main() {
 	flag.Parse()
 	setLogerLevel(*logLevelFlag)
 
-	dbpool, err := pgxpool.New(context.Background(), os.Getenv("POSTGRES_URL"))
+	dbpool, err := pgxpool.New(context.Background(), os.Getenv("DB_URL"))
 	if err != nil {
 		logger.Fatalf("Failed to create db pool with error: %v\n", err)
 	}

@@ -1,0 +1,57 @@
+services:
+  postgres:
+    image: postgres:latest
+    container_name: test-postgres
+    env_file:
+      - .test.env
+    ports:
+      - 5432:5432
+    networks:
+      - test-app-network
+
+  adminer:
+    image: adminer
+    container_name: test-adminer
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    networks:
+      - test-app-network
+
+  producer:
+    container_name: test-producer
+    build:
+      context: ./producer
+      dockerfile: ./build/Dockerfile
+    env_file:
+      - .test.env
+    expose:
+      - "50051"
+    depends_on:
+      - postgres
+    networks:
+      - test-app-network
+    command: go test -v ./...
+
+  consumer:
+    container_name: test-consumer
+    build:
+      context: ./consumer
+      dockerfile: ./build/Dockerfile
+    env_file:
+      - .test.env
+    expose:
+      - "50051"
+    depends_on:
+      - postgres
+    networks:
+      - test-app-network
+    command: go test -v ./...
+
+networks:
+  test-app-network:
+    driver: bridge
+
+volumes:
+  postgres-data-test:

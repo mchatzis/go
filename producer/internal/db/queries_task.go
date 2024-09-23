@@ -14,11 +14,3 @@ func CreateTask(queries *sqlc.Queries, task sqlc.Task) error {
 	}
 	return nil
 }
-
-func GetAllTasks(queries *sqlc.Queries) ([]sqlc.Task, error) {
-	tasks, err := queries.GetTasks(context.Background())
-	if err != nil {
-		return nil, err
-	}
-	return tasks, nil
-}

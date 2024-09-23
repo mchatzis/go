@@ -1,27 +1,20 @@
 package db
 
 import (
-	"database/sql"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/mchatzis/go/producer/pkg/sqlc"
 	prod_testing "github.com/mchatzis/go/producer/pkg/testing"
 )
 
 func TestMain(m *testing.M) {
 	db := prod_testing.GetDB()
-	schema := `CREATE TABLE tasks (
-		ID INTEGER UNIQUE NOT NULL CHECK (ID > 0),
-		Type INTEGER CHECK (Type BETWEEN 0 AND 9) NOT NULL,
-		Value INTEGER CHECK (Value BETWEEN 0 AND 99) NOT NULL,
-		State TEXT CHECK (State IN ('pending', 'processing', 'done', 'failed')) NOT NULL,
-		CreationTime REAL NOT NULL,
-		LastUpdateTime REAL NOT NULL
-	);`
 	db.SetSchema(schema)
 	code := m.Run()
-	db.TearDownDB()
+	db.TearDownDB(dropQuery)
 	os.Exit(code)
 }
 
@@ -29,12 +22,6 @@ func TestCreateTask(t *testing.T) {
 	db := prod_testing.GetDB()
 
 	now := float64(time.Now().UnixNano()) / 1e9
-
-	insertTask := func(tx *sql.Tx, id, taskType, value int, state string, creationTime, lastUpdateTime float64) error {
-		_, err := tx.Exec("INSERT INTO tasks (ID, Type, Value, State, CreationTime, LastUpdateTime) VALUES (?, ?, ?, ?, ?, ?)",
-			id, taskType, value, state, creationTime, lastUpdateTime)
-		return err
-	}
 
 	testCases := []struct {
 		name           string
@@ -60,8 +47,16 @@ func TestCreateTask(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := db.WithTx(t, tc.commit, func(t *testing.T, tx *sql.Tx) error {
-				return insertTask(tx, tc.id, tc.taskType, tc.value, tc.state, tc.creationTime, tc.lastUpdateTime)
+			err := db.WithTx(t, tc.commit, func(t *testing.T, tx pgx.Tx) error {
+				txQueries := sqlc.New(tx)
+				return CreateTask(txQueries, sqlc.Task{
+					ID:             int32(tc.id),
+					Type:           int32(tc.taskType),
+					Value:          int32(tc.value),
+					State:          sqlc.TaskState(tc.state),
+					Creationtime:   tc.creationTime,
+					Lastupdatetime: tc.lastUpdateTime,
+				})
 			})
 			if tc.expectError && err == nil {
 				t.Errorf("Expected error for %s, but got none", tc.name)
@@ -70,5 +65,32 @@ func TestCreateTask(t *testing.T) {
 			}
 		})
 	}
-
 }
+
+const schema = `DO $$
+BEGIN
+	CREATE TYPE task_state AS ENUM ('pending', 'processing', 'done', 'failed');
+END $$;
+
+DO $$
+BEGIN
+	CREATE TABLE tasks (
+		ID INT PRIMARY KEY CHECK (ID > 0),
+		Type INT CHECK (Type BETWEEN 0 AND 9) NOT NULL,
+		Value INT CHECK (Value BETWEEN 0 AND 99) NOT NULL,
+		State task_state NOT NULL,
+		CreationTime FLOAT NOT NULL,
+		LastUpdateTime FLOAT NOT NULL
+	);
+END $$;`
+
+const dropQuery = `DO $$
+BEGIN
+	DROP TABLE IF EXISTS tasks;
+END $$;
+
+DO $$
+BEGIN
+	DROP TYPE IF EXISTS task_state;
+END $$;
+`
