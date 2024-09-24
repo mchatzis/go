@@ -29,6 +29,7 @@ services:
       - .env
     expose:
       - "50051"
+      - "2112"
     depends_on:
       - postgres
     networks:
@@ -62,19 +63,23 @@ services:
     image: prom/prometheus
     container_name: prometheus
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-    ports:
-      - "9090:9090"
+      - ./monitoring/prometheus/:/etc/prometheus/
+    expose:
+      - "9090"
     networks:
       - app-network
 
   grafana:
     image: grafana/grafana
     container_name: grafana
+    env_file:
+      - .env
     ports:
       - "3000:3000"
     depends_on:
       - prometheus
+    volumes:
+      - ./monitoring/grafana/provisioning/:/etc/grafana/provisioning/
     networks:
       - app-network
 

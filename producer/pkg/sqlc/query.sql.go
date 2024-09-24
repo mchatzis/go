@@ -9,12 +9,12 @@ import (
 	"context"
 )
 
-const countTasksInState = `-- name: CountTasksInState :one
+const countOfTasksInState = `-- name: CountOfTasksInState :one
 SELECT COUNT(*) FROM tasks WHERE state = $1
 `
 
-func (q *Queries) CountTasksInState(ctx context.Context, state TaskState) (int64, error) {
-	row := q.db.QueryRow(ctx, countTasksInState, state)
+func (q *Queries) CountOfTasksInState(ctx context.Context, state TaskState) (int64, error) {
+	row := q.db.QueryRow(ctx, countOfTasksInState, state)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -45,24 +45,24 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) error {
 	return err
 }
 
-const getCountDoneTasksByType = `-- name: GetCountDoneTasksByType :many
+const getCountOfDoneTasksByType = `-- name: GetCountOfDoneTasksByType :many
 SELECT type, COUNT(*) FROM tasks WHERE state='done' GROUP BY type ORDER BY type
 `
 
-type GetCountDoneTasksByTypeRow struct {
+type GetCountOfDoneTasksByTypeRow struct {
 	Type  int32
 	Count int64
 }
 
-func (q *Queries) GetCountDoneTasksByType(ctx context.Context) ([]GetCountDoneTasksByTypeRow, error) {
-	rows, err := q.db.Query(ctx, getCountDoneTasksByType)
+func (q *Queries) GetCountOfDoneTasksByType(ctx context.Context) ([]GetCountOfDoneTasksByTypeRow, error) {
+	rows, err := q.db.Query(ctx, getCountOfDoneTasksByType)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetCountDoneTasksByTypeRow
+	var items []GetCountOfDoneTasksByTypeRow
 	for rows.Next() {
-		var i GetCountDoneTasksByTypeRow
+		var i GetCountOfDoneTasksByTypeRow
 		if err := rows.Scan(&i.Type, &i.Count); err != nil {
 			return nil, err
 		}
@@ -74,24 +74,24 @@ func (q *Queries) GetCountDoneTasksByType(ctx context.Context) ([]GetCountDoneTa
 	return items, nil
 }
 
-const getCountTasksByState = `-- name: GetCountTasksByState :many
+const getCountOfTasksByState = `-- name: GetCountOfTasksByState :many
 SELECT state, COUNT(*) FROM tasks GROUP BY state
 `
 
-type GetCountTasksByStateRow struct {
+type GetCountOfTasksByStateRow struct {
 	State TaskState
 	Count int64
 }
 
-func (q *Queries) GetCountTasksByState(ctx context.Context) ([]GetCountTasksByStateRow, error) {
-	rows, err := q.db.Query(ctx, getCountTasksByState)
+func (q *Queries) GetCountOfTasksByState(ctx context.Context) ([]GetCountOfTasksByStateRow, error) {
+	rows, err := q.db.Query(ctx, getCountOfTasksByState)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetCountTasksByStateRow
+	var items []GetCountOfTasksByStateRow
 	for rows.Next() {
-		var i GetCountTasksByStateRow
+		var i GetCountOfTasksByStateRow
 		if err := rows.Scan(&i.State, &i.Count); err != nil {
 			return nil, err
 		}
@@ -103,24 +103,24 @@ func (q *Queries) GetCountTasksByState(ctx context.Context) ([]GetCountTasksBySt
 	return items, nil
 }
 
-const getTotalValueDoneTasksByType = `-- name: GetTotalValueDoneTasksByType :many
+const getTotalValueOfDoneTasksByType = `-- name: GetTotalValueOfDoneTasksByType :many
 SELECT type, SUM(value) FROM tasks WHERE state='done' GROUP BY type ORDER BY type
 `
 
-type GetTotalValueDoneTasksByTypeRow struct {
+type GetTotalValueOfDoneTasksByTypeRow struct {
 	Type int32
 	Sum  int64
 }
 
-func (q *Queries) GetTotalValueDoneTasksByType(ctx context.Context) ([]GetTotalValueDoneTasksByTypeRow, error) {
-	rows, err := q.db.Query(ctx, getTotalValueDoneTasksByType)
+func (q *Queries) GetTotalValueOfDoneTasksByType(ctx context.Context) ([]GetTotalValueOfDoneTasksByTypeRow, error) {
+	rows, err := q.db.Query(ctx, getTotalValueOfDoneTasksByType)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetTotalValueDoneTasksByTypeRow
+	var items []GetTotalValueOfDoneTasksByTypeRow
 	for rows.Next() {
-		var i GetTotalValueDoneTasksByTypeRow
+		var i GetTotalValueOfDoneTasksByTypeRow
 		if err := rows.Scan(&i.Type, &i.Sum); err != nil {
 			return nil, err
 		}

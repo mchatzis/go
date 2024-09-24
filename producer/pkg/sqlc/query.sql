@@ -1,13 +1,13 @@
--- name: CountTasksInState :one
+-- name: CountOfTasksInState :one
 SELECT COUNT(*) FROM tasks WHERE state = $1;
 
--- name: GetTotalValueDoneTasksByType :many
+-- name: GetTotalValueOfDoneTasksByType :many
 SELECT type, SUM(value) FROM tasks WHERE state='done' GROUP BY type ORDER BY type;
 
--- name: GetCountDoneTasksByType :many
+-- name: GetCountOfDoneTasksByType :many
 SELECT type, COUNT(*) FROM tasks WHERE state='done' GROUP BY type ORDER BY type;
 
--- name: GetCountTasksByState :many
+-- name: GetCountOfTasksByState :many
 SELECT state, COUNT(*) FROM tasks GROUP BY state;
 
 -- name: CreateTask :exec
