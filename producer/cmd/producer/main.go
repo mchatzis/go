@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"time"
@@ -18,10 +17,9 @@ import (
 var logger = logging.GetLogger()
 
 func init() {
-	go func() {
-		logger.Error(http.ListenAndServe(":6060", nil))
-	}()
 	monitoring.RegisterCollectors()
+	go monitoring.ExposeMetrics(2112)
+	go monitoring.ExposeProfiling(6060)
 }
 
 func main() {
@@ -42,7 +40,6 @@ func main() {
 	logger.Info("Starting task production...")
 	go producer.Produce(queries)
 
-	go monitoring.ExposeMetrics()
 	go monitoring.UpdateMetrics(queries)
 
 	select {}

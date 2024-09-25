@@ -3,15 +3,28 @@ package main
 import (
 	"context"
 	"flag"
+	_ "net/http/pprof"
 	"os"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mchatzis/go/consumer/internal/consumer"
 	"github.com/mchatzis/go/producer/pkg/logging"
+	"github.com/mchatzis/go/producer/pkg/monitoring"
 	"github.com/mchatzis/go/producer/pkg/sqlc"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 var logger = logging.GetLogger()
+
+func init() {
+	promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "service_up",
+		Help: "Indicates whether the service is up (1) or down (0)",
+	}).Set(1)
+	go monitoring.ExposeMetrics(6061)
+	go monitoring.ExposeProfiling(2112)
+}
 
 func main() {
 	logLevelFlag := flag.String("loglevel", "info", "Log level (debug, info, warn, error)")
