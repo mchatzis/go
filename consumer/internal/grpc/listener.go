@@ -3,7 +3,6 @@ package grpc
 import (
 	"context"
 	"net"
-	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -37,19 +36,7 @@ func (s *server) SendTask(ctx context.Context, grpc_task *prod_grpc.Task) (*empt
 	return &emptypb.Empty{}, nil
 }
 
-func ListenForTasks(taskChanOut chan *sqlc.Task, taskChanOut2 chan *sqlc.Task) {
-	taskListenChan := make(chan *sqlc.Task)
-	go startGrpcServer(taskListenChan)
-
-	for task := range taskListenChan {
-		time.Sleep(time.Duration(rateLimiterMultiplier) * time.Millisecond)
-		logger.Debugf("Received task: %+v", task.ID)
-		taskChanOut <- task
-		taskChanOut2 <- task
-	}
-}
-
-func startGrpcServer(taskChan chan *sqlc.Task) {
+func ListenForTasks(taskChanOut chan *sqlc.Task) {
 	logger.Info("Opening tcp connection...")
 	listener, err := net.Listen("tcp", ":50051")
 	if err != nil {
@@ -57,7 +44,7 @@ func startGrpcServer(taskChan chan *sqlc.Task) {
 	}
 
 	server := &server{
-		taskChan: taskChan,
+		taskChan: taskChanOut,
 	}
 	grpcServer := grpc.NewServer()
 	prod_grpc.RegisterTaskServiceServer(grpcServer, server)

@@ -11,31 +11,66 @@ import (
 )
 
 const bufferSize = 50
+const rateLimiterMultiplier = 500
 
 var logger = logging.GetLogger()
 
 /*
 Updating the state to 'Processing' in DB happens concurrently with actually processing
-the tasks. This is to avoid the I/O performance bottleneck (dependent on DB access latency)
-of a sequential design.
+the tasks. This is to avoid the I/O performance bottleneck of a sequential design, which
+depends on DB access latency.
 */
 func HandleIncomingTasks(queries *sqlc.Queries) {
-	taskUpdateStateToProcessingChanIn := make(chan *sqlc.Task, bufferSize)
-	taskUpdateStateToProcessingChanOut := make(chan *sqlc.Task, bufferSize)
+	taskIncomingChan := make(chan *sqlc.Task)
+	go grpc.ListenForTasks(taskIncomingChan)
+
+	taskUpdateInDbToProcessingChanIn := make(chan *sqlc.Task, bufferSize)
+	taskUpdateInDbToProcessingChanOut := make(chan *sqlc.Task, bufferSize)
 	taskProcessChanIn := make(chan *sqlc.Task, bufferSize)
 	taskProcessChanOut := make(chan *sqlc.Task, bufferSize)
-	taskUpdateStateToDoneChanIn := make(chan *sqlc.Task, bufferSize)
-	taskUpdateStateToDoneChanOut := make(chan *sqlc.Task, bufferSize)
+	taskUpdateInDbToDoneChanIn := make(chan *sqlc.Task, bufferSize)
+	taskUpdateInDbToDoneChanOut := make(chan *sqlc.Task, bufferSize)
 
-	go grpc.ListenForTasks(taskProcessChanIn, taskUpdateStateToProcessingChanIn)
-
-	var processedUnmatchedTasks sync.Map
+	var unmatchedTasks sync.Map
 	for i := 0; i < 15; i++ {
+		go distributeIncomingTasks(taskIncomingChan, taskProcessChanIn, taskUpdateInDbToProcessingChanIn)
 		go processTasks(taskProcessChanIn, taskProcessChanOut)
-		go updateTasksState(taskUpdateStateToProcessingChanIn, taskUpdateStateToProcessingChanOut, sqlc.TaskStateProcessing, queries)
-		go recombineChannels(taskProcessChanOut, taskUpdateStateToProcessingChanOut, taskUpdateStateToDoneChanIn, &processedUnmatchedTasks)
-		go updateTasksState(taskUpdateStateToDoneChanIn, taskUpdateStateToDoneChanOut, sqlc.TaskStateDone, queries)
-		go logDoneTasks(taskUpdateStateToDoneChanOut)
+		go updateTasksStateInDb(taskUpdateInDbToProcessingChanIn, taskUpdateInDbToProcessingChanOut, sqlc.TaskStateProcessing, queries)
+		go recombineChannels(taskProcessChanOut, taskUpdateInDbToProcessingChanOut, taskUpdateInDbToDoneChanIn, &unmatchedTasks)
+		go updateTasksStateInDb(taskUpdateInDbToDoneChanIn, taskUpdateInDbToDoneChanOut, sqlc.TaskStateDone, queries)
+		go logDoneTasks(taskUpdateInDbToDoneChanOut)
+	}
+}
+
+func distributeIncomingTasks(taskChanIn chan *sqlc.Task, taskChanOut chan *sqlc.Task, taskChanOut2 chan *sqlc.Task) {
+	for task := range taskChanIn {
+		task.State = sqlc.TaskStateProcessing
+		taskChanOut <- task
+		taskChanOut2 <- task
+		time.Sleep(time.Duration(rateLimiterMultiplier) * time.Millisecond)
+	}
+}
+
+func processTasks(taskChanIn chan *sqlc.Task, taskChanOut chan *sqlc.Task) {
+	for task := range taskChanIn {
+		logger.Debugf("Processing task: %+v", task.ID)
+		time.Sleep(time.Duration(task.Value) * time.Millisecond)
+		task.State = sqlc.TaskStateDone
+		taskChanOut <- task
+	}
+}
+
+func updateTasksStateInDb(taskChanIn chan *sqlc.Task, taskChanOut chan *sqlc.Task, state sqlc.TaskState, queries *sqlc.Queries) {
+	for task := range taskChanIn {
+		err := queries.UpdateTaskState(context.Background(), sqlc.UpdateTaskStateParams{
+			State: state,
+			ID:    task.ID,
+		})
+		if err != nil {
+			logger.Errorf("Failed to update task state: %v", err)
+		}
+		logger.Debugf("Updated task to %v: %v", state, task.ID)
+		taskChanOut <- task
 	}
 }
 
@@ -60,28 +95,6 @@ func tryMatchTask(task *sqlc.Task, taskChanOut chan *sqlc.Task, unmatchedTasks *
 		unmatchedTasks.Delete(task.ID)
 	} else {
 		unmatchedTasks.Store(task.ID, *task)
-	}
-}
-
-func processTasks(taskChanIn chan *sqlc.Task, taskChanOut chan *sqlc.Task) {
-	for task := range taskChanIn {
-		logger.Debugf("Processing task: %+v", task.ID)
-		time.Sleep(time.Duration(task.Value) * time.Millisecond)
-		taskChanOut <- task
-	}
-}
-
-func updateTasksState(taskChanIn chan *sqlc.Task, taskChanOut chan *sqlc.Task, state sqlc.TaskState, queries *sqlc.Queries) {
-	for task := range taskChanIn {
-		err := queries.UpdateTaskState(context.Background(), sqlc.UpdateTaskStateParams{
-			State: state,
-			ID:    task.ID,
-		})
-		if err != nil {
-			logger.Errorf("Failed to update task state: %v", err)
-		}
-		logger.Debugf("Updated task to %v: %v", state, task.ID)
-		taskChanOut <- task
 	}
 }
 

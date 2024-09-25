@@ -32,7 +32,7 @@ services:
       - postgres
     networks:
       - test-app-network
-    command: go test -v ./...
+    command: go test -v --cover ./...
 
   consumer:
     container_name: test-consumer
