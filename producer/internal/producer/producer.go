@@ -17,8 +17,8 @@ var logger = logging.GetLogger()
 func Produce(queries *sqlc.Queries) {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
-	saveTaskChan := make(chan sqlc.Task, MaxBacklog)
-	sendTaskChan := make(chan sqlc.Task, MaxBacklog)
+	saveTaskChan := make(chan *sqlc.Task, MaxBacklog)
+	sendTaskChan := make(chan *sqlc.Task, MaxBacklog)
 
 	for i := 0; i < 3; i++ {
 		go saveTasks(queries, saveTaskChan)
@@ -33,7 +33,7 @@ func Produce(queries *sqlc.Queries) {
 	}
 }
 
-func generateTask(r *rand.Rand, id int) sqlc.Task {
+func generateTask(r *rand.Rand, id int) *sqlc.Task {
 	if id <= 0 {
 		panic("ID field must be positive")
 	}
@@ -41,7 +41,7 @@ func generateTask(r *rand.Rand, id int) sqlc.Task {
 	taskType := r.Intn(10)
 	taskValue := r.Intn(100)
 
-	task := sqlc.Task{
+	task := &sqlc.Task{
 		ID:             int32(id),
 		Type:           int32(taskType),
 		Value:          int32(taskValue),
@@ -53,9 +53,9 @@ func generateTask(r *rand.Rand, id int) sqlc.Task {
 	return task
 }
 
-func saveTasks(queries *sqlc.Queries, taskChan <-chan sqlc.Task) {
+func saveTasks(queries *sqlc.Queries, taskChan <-chan *sqlc.Task) {
 	for task := range taskChan {
-		err := queries.CreateTask(context.Background(), sqlc.CreateTaskParams(task))
+		err := queries.CreateTask(context.Background(), sqlc.CreateTaskParams(*task))
 		if err != nil {
 			logger.Errorf("Failed to save task %v with error: %v", task.ID, err)
 		} else {

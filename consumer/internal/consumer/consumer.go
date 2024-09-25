@@ -42,7 +42,7 @@ func HandleIncomingTasks(queries *sqlc.Queries) {
 	}
 }
 
-func distributeIncomingTasks(taskChanIn chan *sqlc.Task, taskChanOut chan *sqlc.Task, taskChanOut2 chan *sqlc.Task) {
+func distributeIncomingTasks(taskChanIn <-chan *sqlc.Task, taskChanOut chan<- *sqlc.Task, taskChanOut2 chan<- *sqlc.Task) {
 	for task := range taskChanIn {
 		task.State = sqlc.TaskStateProcessing
 		taskChanOut <- task
@@ -51,7 +51,7 @@ func distributeIncomingTasks(taskChanIn chan *sqlc.Task, taskChanOut chan *sqlc.
 	}
 }
 
-func processTasks(taskChanIn chan *sqlc.Task, taskChanOut chan *sqlc.Task) {
+func processTasks(taskChanIn <-chan *sqlc.Task, taskChanOut chan<- *sqlc.Task) {
 	for task := range taskChanIn {
 		logger.Debugf("Processing task: %+v", task.ID)
 		time.Sleep(time.Duration(task.Value) * time.Millisecond)
@@ -60,7 +60,7 @@ func processTasks(taskChanIn chan *sqlc.Task, taskChanOut chan *sqlc.Task) {
 	}
 }
 
-func updateTasksStateInDb(taskChanIn chan *sqlc.Task, taskChanOut chan *sqlc.Task, state sqlc.TaskState, queries *sqlc.Queries) {
+func updateTasksStateInDb(taskChanIn <-chan *sqlc.Task, taskChanOut chan<- *sqlc.Task, state sqlc.TaskState, queries *sqlc.Queries) {
 	for task := range taskChanIn {
 		err := queries.UpdateTaskState(context.Background(), sqlc.UpdateTaskStateParams{
 			State: state,
@@ -74,7 +74,7 @@ func updateTasksStateInDb(taskChanIn chan *sqlc.Task, taskChanOut chan *sqlc.Tas
 	}
 }
 
-func recombineChannels(taskChanIn chan *sqlc.Task, taskChanIn2 chan *sqlc.Task, taskChanOut chan *sqlc.Task, unmatchedTasks *sync.Map) {
+func recombineChannels(taskChanIn <-chan *sqlc.Task, taskChanIn2 <-chan *sqlc.Task, taskChanOut chan<- *sqlc.Task, unmatchedTasks *sync.Map) {
 	// Uses a map to match tasks incoming from the 'processing' and 'update-to-processing' channels.
 	// Matched tasks are then sent to get updated to 'done'.
 	// Ensures each task has both been processed and updated in db to 'processing',
@@ -89,16 +89,16 @@ func recombineChannels(taskChanIn chan *sqlc.Task, taskChanIn2 chan *sqlc.Task, 
 	}
 }
 
-func tryMatchTask(task *sqlc.Task, taskChanOut chan *sqlc.Task, unmatchedTasks *sync.Map) {
+func tryMatchTask(task *sqlc.Task, taskChanOut chan<- *sqlc.Task, unmatchedTasks *sync.Map) {
 	if _, exists := unmatchedTasks.Load(task.ID); exists {
 		taskChanOut <- task
 		unmatchedTasks.Delete(task.ID)
 	} else {
-		unmatchedTasks.Store(task.ID, *task)
+		unmatchedTasks.Store(task.ID, task)
 	}
 }
 
-func logDoneTasks(taskChanIn chan *sqlc.Task) {
+func logDoneTasks(taskChanIn <-chan *sqlc.Task) {
 	for task := range taskChanIn {
 		logger.Debugf("Done processing and updating task: %+v", task.ID)
 	}

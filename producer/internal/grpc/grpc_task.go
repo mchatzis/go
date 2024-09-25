@@ -14,7 +14,7 @@ import (
 
 var logger = logging.GetLogger()
 
-func SendTasks(taskChan <-chan sqlc.Task) {
+func SendTasks(taskChan <-chan *sqlc.Task) {
 	conn, err := grpc.NewClient("consumer:50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		logger.Fatalf("Failed to connect to GRPC server: %v", err)
@@ -25,13 +25,19 @@ func SendTasks(taskChan <-chan sqlc.Task) {
 
 	logger.Info("Grpc client is running on port 50051...")
 	logger.Info("Successfully connected to GRPC server...")
-	for task := range taskChan {
-		sendTask(client, task)
+
+	for i := 0; i < 3; i++ {
+		go func() {
+			for task := range taskChan {
+				sendTask(client, task)
+			}
+		}()
 	}
+	select {}
 }
 
-func sendTask(client prod_grpc.TaskServiceClient, task sqlc.Task) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+func sendTask(client prod_grpc.TaskServiceClient, task *sqlc.Task) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	grpcState := mapTaskState(task.State)
