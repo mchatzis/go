@@ -1,25 +1,25 @@
-package db
+package testing
 
 import (
+	"context"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/mchatzis/go/producer/pkg/sqlc"
-	prod_testing "github.com/mchatzis/go/producer/pkg/testing"
 )
 
 func TestMain(m *testing.M) {
-	db := prod_testing.GetDB()
+	db := GetDB()
 	db.SetSchema(schema)
 	code := m.Run()
 	db.TearDownDB(dropQuery)
 	os.Exit(code)
 }
 
-func TestCreateTask(t *testing.T) {
-	db := prod_testing.GetDB()
+func TestSchema(t *testing.T) {
+	db := GetDB()
 
 	now := float64(time.Now().UnixNano()) / 1e9
 
@@ -49,14 +49,16 @@ func TestCreateTask(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			err := db.WithTx(t, tc.commit, func(t *testing.T, tx pgx.Tx) error {
 				txQueries := sqlc.New(tx)
-				return CreateTask(txQueries, sqlc.Task{
+				task := sqlc.Task{
 					ID:             int32(tc.id),
 					Type:           int32(tc.taskType),
 					Value:          int32(tc.value),
 					State:          sqlc.TaskState(tc.state),
 					Creationtime:   tc.creationTime,
 					Lastupdatetime: tc.lastUpdateTime,
-				})
+				}
+				params := sqlc.CreateTaskParams(task)
+				return txQueries.CreateTask(context.Background(), params)
 			})
 			if tc.expectError && err == nil {
 				t.Errorf("Expected error for %s, but got none", tc.name)

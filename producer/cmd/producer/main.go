@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"flag"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"time"
 
@@ -16,6 +18,9 @@ import (
 var logger = logging.GetLogger()
 
 func init() {
+	go func() {
+		logger.Error(http.ListenAndServe(":6060", nil))
+	}()
 	monitoring.RegisterCollectors()
 }
 

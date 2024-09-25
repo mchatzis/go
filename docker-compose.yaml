@@ -30,6 +30,8 @@ services:
     expose:
       - "50051"
       - "2112"
+    ports:
+      - "6060:6060"
     depends_on:
       - postgres
     networks:
@@ -64,6 +66,9 @@ services:
     container_name: prometheus
     volumes:
       - ./monitoring/prometheus/:/etc/prometheus/
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--log.level=error'
     expose:
       - "9090"
     networks:
@@ -74,6 +79,8 @@ services:
     container_name: grafana
     env_file:
       - .env
+    environment:
+      - GF_LOG_LEVEL=error
     ports:
       - "3000:3000"
     depends_on:

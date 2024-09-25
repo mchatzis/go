@@ -1,10 +1,10 @@
 package producer
 
 import (
+	"context"
 	"math/rand"
 	"time"
 
-	"github.com/mchatzis/go/producer/internal/db"
 	"github.com/mchatzis/go/producer/internal/grpc"
 	"github.com/mchatzis/go/producer/pkg/logging"
 	"github.com/mchatzis/go/producer/pkg/sqlc"
@@ -55,7 +55,7 @@ func generateTask(r *rand.Rand, id int) sqlc.Task {
 
 func saveTasks(queries *sqlc.Queries, taskChan <-chan sqlc.Task) {
 	for task := range taskChan {
-		err := db.CreateTask(queries, task)
+		err := queries.CreateTask(context.Background(), sqlc.CreateTaskParams(task))
 		if err != nil {
 			logger.Errorf("Failed to save task %v with error: %v", task.ID, err)
 		} else {
