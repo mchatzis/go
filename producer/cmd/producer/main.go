@@ -5,7 +5,6 @@ import (
 	"flag"
 	_ "net/http/pprof"
 	"os"
-	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mchatzis/go/producer/internal/producer"
@@ -33,9 +32,6 @@ func main() {
 	}
 	defer dbpool.Close()
 	queries := sqlc.New(dbpool)
-
-	//Wait a sec for postgres container to finish spin up, should use a docker healthcheck instead in the future
-	time.Sleep(time.Second)
 
 	logger.Info("Starting task production...")
 	go producer.Produce(queries)

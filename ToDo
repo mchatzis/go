@@ -1,7 +1,5 @@
-- db docker healthcheck
 - errorChan buffer of 100 can overflow. Need rethinking
 - Use .env for grpc host:port
-- Think which port to use for grpc
 - Understand when unbuffered vs buffered channels block + for c := range channel { } syntactic sugar. 
     What happens if I send two values to an unbuffered channel?
 - Graceful shutdown: In a production system, you'd want to implement a graceful shutdown mechanism

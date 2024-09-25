@@ -57,10 +57,9 @@ func saveTasks(queries *sqlc.Queries, taskChan <-chan *sqlc.Task) {
 	for task := range taskChan {
 		err := queries.CreateTask(context.Background(), sqlc.CreateTaskParams(*task))
 		if err != nil {
-			logger.Errorf("Failed to save task %v with error: %v", task.ID, err)
+			logger.Fatalf("Failed to save task %v with error: %v", task.ID, err)
 		} else {
 			logger.Debugf("Created in db pending task: %v", task.ID)
 		}
-
 	}
 }

@@ -54,10 +54,20 @@ func distributeIncomingTasks(taskChanIn <-chan *sqlc.Task, taskChanOut chan<- *s
 func processTasks(taskChanIn <-chan *sqlc.Task, taskChanOut chan<- *sqlc.Task) {
 	for task := range taskChanIn {
 		logger.Debugf("Processing task: %+v", task.ID)
-		time.Sleep(time.Duration(task.Value) * time.Millisecond)
-		task.State = sqlc.TaskStateDone
-		taskChanOut <- task
+		err := pretendToProcess(task)
+		if err != nil {
+			task.State = sqlc.TaskStateFailed
+			logger.Infof("Task %v failed processing with error: %v", task.ID, err)
+		} else {
+			task.State = sqlc.TaskStateDone
+			taskChanOut <- task
+		}
 	}
+}
+
+func pretendToProcess(task *sqlc.Task) error {
+	time.Sleep(time.Duration(task.Value) * time.Millisecond)
+	return nil
 }
 
 func updateTasksStateInDb(taskChanIn <-chan *sqlc.Task, taskChanOut chan<- *sqlc.Task, state sqlc.TaskState, queries *sqlc.Queries) {
