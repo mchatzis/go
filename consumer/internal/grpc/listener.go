@@ -7,9 +7,9 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
 
+	"github.com/mchatzis/go/producer/pkg/base"
 	prod_grpc "github.com/mchatzis/go/producer/pkg/grpc"
 	"github.com/mchatzis/go/producer/pkg/logging"
-	"github.com/mchatzis/go/producer/pkg/sqlc"
 )
 
 const rateLimiterMultiplier int = 10
@@ -18,25 +18,19 @@ var logger = logging.GetLogger()
 
 type server struct {
 	prod_grpc.UnimplementedTaskServiceServer
-	taskChan chan *sqlc.Task
+	taskChan chan *base.Task
 }
 
 func (s *server) SendTask(ctx context.Context, grpc_task *prod_grpc.Task) (*emptypb.Empty, error) {
-	task := sqlc.Task{
-		ID:             grpc_task.Id,
-		Type:           grpc_task.Type,
-		Value:          grpc_task.Value,
-		State:          mapGrpcToSqlc(grpc_task.State),
-		Creationtime:   grpc_task.CreationTime,
-		Lastupdatetime: grpc_task.LastUpdateTime,
-	}
+	task := &base.Task{}
+	task.FromGRPCTask(grpc_task)
 
-	s.taskChan <- &task
+	s.taskChan <- task
 
 	return &emptypb.Empty{}, nil
 }
 
-func ListenForTasks(taskChanOut chan *sqlc.Task) {
+func ListenForTasks(taskChanOut chan *base.Task) {
 	logger.Info("Opening tcp connection...")
 	listener, err := net.Listen("tcp", ":50051")
 	if err != nil {
@@ -52,21 +46,5 @@ func ListenForTasks(taskChanOut chan *sqlc.Task) {
 	logger.Info("Listening for tasks on port 50051")
 	if err := grpcServer.Serve(listener); err != nil {
 		logger.Fatalf("Grpc server failed: %v", err)
-	}
-}
-
-func mapGrpcToSqlc(state prod_grpc.TaskState) sqlc.TaskState {
-	switch state {
-	case prod_grpc.TaskState_PENDING:
-		return sqlc.TaskStatePending
-	case prod_grpc.TaskState_PROCESSING:
-		return sqlc.TaskStateProcessing
-	case prod_grpc.TaskState_DONE:
-		return sqlc.TaskStateDone
-	case prod_grpc.TaskState_FAILED:
-		return sqlc.TaskStateFailed
-	default:
-		logger.Fatalf("Unexpected TaskState value: %v", state)
-		return ""
 	}
 }

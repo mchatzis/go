@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mchatzis/go/producer/pkg/sqlc"
+	"github.com/mchatzis/go/producer/pkg/base"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -31,7 +31,7 @@ func TestGenerateTask(t *testing.T) {
 	assert.GreaterOrEqual(t, task.Value, int32(0), "Task Value should be >= 0")
 	assert.Less(t, task.Value, int32(100), "Task Value should be < 100")
 
-	assert.Equal(t, sqlc.TaskStatePending, task.State, "Task State should be pending")
+	assert.Equal(t, base.TaskStatePending, task.State, "Task State should be pending")
 
 	assert.NotZero(t, task.Creationtime, "Task Creationtime should not be zero")
 	assert.NotZero(t, task.Lastupdatetime, "Task Lastupdatetime should not be zero")

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/mchatzis/go/consumer/internal/grpc"
+	"github.com/mchatzis/go/producer/pkg/base"
 	"github.com/mchatzis/go/producer/pkg/logging"
 	"github.com/mchatzis/go/producer/pkg/sqlc"
 )
@@ -20,61 +21,62 @@ the tasks. This is to avoid the I/O performance bottleneck of a sequential desig
 depends on DB access latency.
 */
 func HandleIncomingTasks(queries *sqlc.Queries) {
-	taskIncomingChan := make(chan *sqlc.Task)
+	taskIncomingChan := make(chan *base.Task)
 	go grpc.ListenForTasks(taskIncomingChan)
 
-	taskUpdateInDbToProcessingChanIn := make(chan *sqlc.Task, bufferSize)
-	taskUpdateInDbToProcessingChanOut := make(chan *sqlc.Task, bufferSize)
-	taskProcessChanIn := make(chan *sqlc.Task, bufferSize)
-	taskProcessChanOut := make(chan *sqlc.Task, bufferSize)
-	taskUpdateInDbToDoneChanIn := make(chan *sqlc.Task, bufferSize)
-	taskUpdateInDbToDoneChanOut := make(chan *sqlc.Task, bufferSize)
+	taskUpdateInDbToProcessingChanIn := make(chan *base.Task, bufferSize)
+	taskUpdateInDbToProcessingChanOut := make(chan *base.Task, bufferSize)
+	taskProcessChanIn := make(chan *base.Task, bufferSize)
+	taskProcessChanOut := make(chan *base.Task, bufferSize)
+	taskUpdateInDbToDoneChanIn := make(chan *base.Task, bufferSize)
+	taskUpdateInDbToDoneChanOut := make(chan *base.Task, bufferSize)
 
 	const rateLimitDuration = 500 * time.Millisecond
 	var unmatchedTasks sync.Map
 	for i := 0; i < 15; i++ {
 		go distributeIncomingTasksWithRateLimit(taskIncomingChan, taskProcessChanIn, taskUpdateInDbToProcessingChanIn, rateLimitDuration)
 		go processTasks(taskProcessChanIn, taskProcessChanOut, pretendToProcess)
-		go updateTasksStateInDb(taskUpdateInDbToProcessingChanIn, taskUpdateInDbToProcessingChanOut, sqlc.TaskStateProcessing, queries)
+		go updateTasksStateInDb(taskUpdateInDbToProcessingChanIn, taskUpdateInDbToProcessingChanOut, base.TaskStateProcessing, queries)
 		go recombineChannels(taskProcessChanOut, taskUpdateInDbToProcessingChanOut, taskUpdateInDbToDoneChanIn, &unmatchedTasks)
-		go updateTasksStateInDb(taskUpdateInDbToDoneChanIn, taskUpdateInDbToDoneChanOut, sqlc.TaskStateDone, queries)
+		go updateTasksStateInDb(taskUpdateInDbToDoneChanIn, taskUpdateInDbToDoneChanOut, base.TaskStateDone, queries)
 		go logDoneTasks(taskUpdateInDbToDoneChanOut)
 	}
 }
 
-func distributeIncomingTasksWithRateLimit(taskChanIn <-chan *sqlc.Task, taskChanOut chan<- *sqlc.Task, taskChanOut2 chan<- *sqlc.Task, rateLimitDuration time.Duration) {
+func distributeIncomingTasksWithRateLimit(taskChanIn <-chan *base.Task, taskChanOut chan<- *base.Task, taskChanOut2 chan<- *base.Task, rateLimitDuration time.Duration) {
 	for task := range taskChanIn {
-		task.State = sqlc.TaskStateProcessing
+		task.State = base.TaskStateProcessing
 		taskChanOut <- task
 		taskChanOut2 <- task
 		time.Sleep(rateLimitDuration)
 	}
 }
 
-func processTasks(taskChanIn <-chan *sqlc.Task, taskChanOut chan<- *sqlc.Task, process func(*sqlc.Task) error) {
+func processTasks(taskChanIn <-chan *base.Task, taskChanOut chan<- *base.Task, process func(*base.Task) error) {
 	for task := range taskChanIn {
 		logger.Debugf("Processing task: %+v", task.ID)
 		err := process(task)
 		if err != nil {
-			task.State = sqlc.TaskStateFailed
+			task.State = base.TaskStateFailed
 			logger.Infof("Task %v failed processing with error: %v", task.ID, err)
 		} else {
-			task.State = sqlc.TaskStateDone
+			task.State = base.TaskStateDone
 			taskChanOut <- task
 		}
 	}
 }
 
-func pretendToProcess(task *sqlc.Task) error {
+func pretendToProcess(task *base.Task) error {
 	time.Sleep(time.Duration(task.Value) * time.Millisecond)
 	return nil
 }
 
-func updateTasksStateInDb(taskChanIn <-chan *sqlc.Task, taskChanOut chan<- *sqlc.Task, state sqlc.TaskState, queries *sqlc.Queries) {
+func updateTasksStateInDb(taskChanIn <-chan *base.Task, taskChanOut chan<- *base.Task, state base.TaskState, queries *sqlc.Queries) {
 	for task := range taskChanIn {
+		sqlcTask := task.ToSQLCTask()
 		err := queries.UpdateTaskState(context.Background(), sqlc.UpdateTaskStateParams{
-			State: state,
-			ID:    task.ID,
+			State: sqlcTask.State,
+			ID:    sqlcTask.ID,
 		})
 		if err != nil {
 			logger.Errorf("Failed to update task state: %v", err)
@@ -84,7 +86,7 @@ func updateTasksStateInDb(taskChanIn <-chan *sqlc.Task, taskChanOut chan<- *sqlc
 	}
 }
 
-func recombineChannels(taskChanIn <-chan *sqlc.Task, taskChanIn2 <-chan *sqlc.Task, taskChanOut chan<- *sqlc.Task, unmatchedTasks *sync.Map) {
+func recombineChannels(taskChanIn <-chan *base.Task, taskChanIn2 <-chan *base.Task, taskChanOut chan<- *base.Task, unmatchedTasks *sync.Map) {
 	// Uses a map to match tasks incoming from the 'processing' and 'update-to-processing' channels.
 	// Matched tasks are then sent to get updated to 'done'.
 	// Ensures each task has both been processed and updated in db to 'processing',
@@ -99,7 +101,7 @@ func recombineChannels(taskChanIn <-chan *sqlc.Task, taskChanIn2 <-chan *sqlc.Ta
 	}
 }
 
-func tryMatchTask(task *sqlc.Task, taskChanOut chan<- *sqlc.Task, unmatchedTasks *sync.Map) {
+func tryMatchTask(task *base.Task, taskChanOut chan<- *base.Task, unmatchedTasks *sync.Map) {
 	if _, exists := unmatchedTasks.Load(task.ID); exists {
 		taskChanOut <- task
 		unmatchedTasks.Delete(task.ID)
@@ -108,7 +110,7 @@ func tryMatchTask(task *sqlc.Task, taskChanOut chan<- *sqlc.Task, unmatchedTasks
 	}
 }
 
-func logDoneTasks(taskChanIn <-chan *sqlc.Task) {
+func logDoneTasks(taskChanIn <-chan *base.Task) {
 	for task := range taskChanIn {
 		logger.Debugf("Done processing and updating task: %+v", task.ID)
 	}

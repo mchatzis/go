@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/mchatzis/go/producer/pkg/base"
 	"github.com/mchatzis/go/producer/pkg/sqlc"
 	prod_testing "github.com/mchatzis/go/producer/pkg/testing"
 	"github.com/stretchr/testify/assert"
@@ -17,18 +18,18 @@ func TestUpdateTasksStateInDb(t *testing.T) {
 		mockDB := new(prod_testing.MockDBTX)
 		queries := sqlc.New(mockDB)
 
-		expectedState := sqlc.TaskStateProcessing
+		expectedState := base.TaskStateProcessing
 		expectedTaskID := int32(1)
 
 		mockDB.On("Exec", mock.Anything, mock.Anything, expectedState, expectedTaskID).
 			Return(pgconn.CommandTag{}, nil)
 
-		taskChanIn := make(chan *sqlc.Task)
-		taskChanOut := make(chan *sqlc.Task)
+		taskChanIn := make(chan *base.Task)
+		taskChanOut := make(chan *base.Task)
 
 		go updateTasksStateInDb(taskChanIn, taskChanOut, expectedState, queries)
 
-		inputTask := &sqlc.Task{ID: expectedTaskID, State: sqlc.TaskStatePending}
+		inputTask := &base.Task{ID: expectedTaskID, State: base.TaskStatePending}
 		taskChanIn <- inputTask
 		close(taskChanIn)
 
@@ -43,19 +44,19 @@ func TestUpdateTasksStateInDb(t *testing.T) {
 		mockDB := new(prod_testing.MockDBTX)
 		queries := sqlc.New(mockDB)
 
-		expectedState := sqlc.TaskStateProcessing
+		expectedState := base.TaskStateProcessing
 		expectedTaskID := int32(1)
 		expectedError := errors.New("Failed to perform database operation update state by id")
 
 		mockDB.On("Exec", mock.Anything, mock.Anything, expectedState, expectedTaskID).
 			Return(pgconn.CommandTag{}, expectedError)
 
-		taskChanIn := make(chan *sqlc.Task)
-		taskChanOut := make(chan *sqlc.Task)
+		taskChanIn := make(chan *base.Task)
+		taskChanOut := make(chan *base.Task)
 
 		go updateTasksStateInDb(taskChanIn, taskChanOut, expectedState, queries)
 
-		inputTask := &sqlc.Task{ID: expectedTaskID, State: sqlc.TaskStatePending}
+		inputTask := &base.Task{ID: expectedTaskID, State: base.TaskStatePending}
 		taskChanIn <- inputTask
 		close(taskChanIn)
 
@@ -78,14 +79,14 @@ func TestDistributeIncomingTasks(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			taskChanIn := make(chan *sqlc.Task, tc.inputLen)
-			taskChanOut := make(chan *sqlc.Task, tc.inputLen)
-			taskChanOut2 := make(chan *sqlc.Task, tc.inputLen)
+			taskChanIn := make(chan *base.Task, tc.inputLen)
+			taskChanOut := make(chan *base.Task, tc.inputLen)
+			taskChanOut2 := make(chan *base.Task, tc.inputLen)
 
 			for i := 0; i < tc.inputLen; i++ {
-				taskChanIn <- &sqlc.Task{
+				taskChanIn <- &base.Task{
 					ID:    int32(i),
-					State: sqlc.TaskStatePending,
+					State: base.TaskStatePending,
 				}
 			}
 			close(taskChanIn)
@@ -96,8 +97,8 @@ func TestDistributeIncomingTasks(t *testing.T) {
 			for i := 0; i < tc.inputLen; i++ {
 				select {
 				case task := <-taskChanOut:
-					if task.State != sqlc.TaskStateProcessing {
-						t.Errorf("Expected task state to be %s, got %s", sqlc.TaskStateProcessing, task.State)
+					if task.State != base.TaskStateProcessing {
+						t.Errorf("Expected task state to be %s, got %s", base.TaskStateProcessing, task.State)
 					}
 				case <-time.After(time.Second):
 					t.Error("Timeout waiting for task on taskChanOut")
@@ -105,8 +106,8 @@ func TestDistributeIncomingTasks(t *testing.T) {
 
 				select {
 				case task := <-taskChanOut2:
-					if task.State != sqlc.TaskStateProcessing {
-						t.Errorf("Expected task state to be %s, got %s", sqlc.TaskStateProcessing, task.State)
+					if task.State != base.TaskStateProcessing {
+						t.Errorf("Expected task state to be %s, got %s", base.TaskStateProcessing, task.State)
 					}
 				case <-time.After(time.Second):
 					t.Error("Timeout waiting for task on taskChanOut2")
@@ -126,12 +127,12 @@ func TestDistributeIncomingTasks(t *testing.T) {
 
 func TestDistributeIncomingTasksRateLimit(t *testing.T) {
 	const numTasks = 5
-	taskChanIn := make(chan *sqlc.Task, numTasks)
-	taskChanOut := make(chan *sqlc.Task, numTasks)
-	taskChanOut2 := make(chan *sqlc.Task, numTasks)
+	taskChanIn := make(chan *base.Task, numTasks)
+	taskChanOut := make(chan *base.Task, numTasks)
+	taskChanOut2 := make(chan *base.Task, numTasks)
 
 	for i := 1; i <= numTasks; i++ {
-		taskChanIn <- &sqlc.Task{ID: int32(i), State: sqlc.TaskStatePending}
+		taskChanIn <- &base.Task{ID: int32(i), State: base.TaskStatePending}
 	}
 	close(taskChanIn)
 
@@ -161,7 +162,7 @@ type MockProcessor struct {
 	mock.Mock
 }
 
-func (m *MockProcessor) Process(task *sqlc.Task) error {
+func (m *MockProcessor) Process(task *base.Task) error {
 	args := m.Called(task)
 	return args.Error(0)
 }
@@ -169,19 +170,19 @@ func (m *MockProcessor) Process(task *sqlc.Task) error {
 func TestProcessTasks(t *testing.T) {
 	mockProc := new(MockProcessor)
 
-	mockProc.On("Process", mock.AnythingOfType("*sqlc.Task")).Return(nil).Once()
-	mockProc.On("Process", mock.AnythingOfType("*sqlc.Task")).Return(errors.New("processing error")).Once()
-	mockProc.On("Process", mock.AnythingOfType("*sqlc.Task")).Return(nil).Once()
+	mockProc.On("Process", mock.AnythingOfType("*base.Task")).Return(nil).Once()
+	mockProc.On("Process", mock.AnythingOfType("*base.Task")).Return(errors.New("processing error")).Once()
+	mockProc.On("Process", mock.AnythingOfType("*base.Task")).Return(nil).Once()
 
-	taskChanIn := make(chan *sqlc.Task, 3)
-	taskChanOut := make(chan *sqlc.Task, 3)
+	taskChanIn := make(chan *base.Task, 3)
+	taskChanOut := make(chan *base.Task, 3)
 
 	go processTasks(taskChanIn, taskChanOut, mockProc.Process)
 
-	tasks := []*sqlc.Task{
-		{ID: 1, State: sqlc.TaskStatePending},
-		{ID: 2, State: sqlc.TaskStatePending},
-		{ID: 3, State: sqlc.TaskStatePending},
+	tasks := []*base.Task{
+		{ID: 1, State: base.TaskStatePending},
+		{ID: 2, State: base.TaskStatePending},
+		{ID: 3, State: base.TaskStatePending},
 	}
 
 	for _, task := range tasks {
@@ -189,7 +190,7 @@ func TestProcessTasks(t *testing.T) {
 	}
 	close(taskChanIn)
 
-	processedTasks := make(map[int32]*sqlc.Task)
+	processedTasks := make(map[int32]*base.Task)
 	for i := 0; i < 2; i++ { // We expect 2 successful tasks
 		select {
 		case task := <-taskChanOut:
@@ -200,19 +201,19 @@ func TestProcessTasks(t *testing.T) {
 	}
 
 	assert.Contains(t, processedTasks, int32(1), "Task 1 should be in the processed tasks")
-	assert.Equal(t, sqlc.TaskStateDone, processedTasks[1].State, "Task 1 should be done")
+	assert.Equal(t, base.TaskStateDone, processedTasks[1].State, "Task 1 should be done")
 
 	assert.NotContains(t, processedTasks, int32(2), "Task 2 should not be in the processed tasks")
-	assert.Equal(t, sqlc.TaskStateFailed, tasks[1].State, "Task 2 should be marked as failed")
+	assert.Equal(t, base.TaskStateFailed, tasks[1].State, "Task 2 should be marked as failed")
 
 	assert.Contains(t, processedTasks, int32(3), "Task 3 should be in the processed tasks")
-	assert.Equal(t, sqlc.TaskStateDone, processedTasks[3].State, "Task 3 should be done")
+	assert.Equal(t, base.TaskStateDone, processedTasks[3].State, "Task 3 should be done")
 
 	mockProc.AssertExpectations(t)
 }
 
 func TestPretendToProcess(t *testing.T) {
-	task := &sqlc.Task{Value: 100}
+	task := &base.Task{Value: 100}
 
 	start := time.Now()
 	err := pretendToProcess(task)

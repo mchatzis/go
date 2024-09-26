@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/mchatzis/go/producer/internal/grpc"
+	"github.com/mchatzis/go/producer/pkg/base"
 	"github.com/mchatzis/go/producer/pkg/logging"
 	"github.com/mchatzis/go/producer/pkg/sqlc"
 )
@@ -17,8 +18,8 @@ var logger = logging.GetLogger()
 func Produce(queries *sqlc.Queries) {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
-	saveTaskChan := make(chan *sqlc.Task, MaxBacklog)
-	sendTaskChan := make(chan *sqlc.Task, MaxBacklog)
+	saveTaskChan := make(chan *base.Task, MaxBacklog)
+	sendTaskChan := make(chan *base.Task, MaxBacklog)
 
 	for i := 0; i < 3; i++ {
 		go saveTasks(queries, saveTaskChan)
@@ -33,7 +34,7 @@ func Produce(queries *sqlc.Queries) {
 	}
 }
 
-func generateTask(r *rand.Rand, id int) *sqlc.Task {
+func generateTask(r *rand.Rand, id int) *base.Task {
 	if id <= 0 {
 		panic("ID field must be positive")
 	}
@@ -41,11 +42,11 @@ func generateTask(r *rand.Rand, id int) *sqlc.Task {
 	taskType := r.Intn(10)
 	taskValue := r.Intn(100)
 
-	task := &sqlc.Task{
+	task := &base.Task{
 		ID:             int32(id),
 		Type:           int32(taskType),
 		Value:          int32(taskValue),
-		State:          sqlc.TaskStatePending,
+		State:          base.TaskStatePending,
 		Creationtime:   float64(time.Now().Unix()),
 		Lastupdatetime: float64(time.Now().Unix()),
 	}
@@ -53,9 +54,10 @@ func generateTask(r *rand.Rand, id int) *sqlc.Task {
 	return task
 }
 
-func saveTasks(queries *sqlc.Queries, taskChan <-chan *sqlc.Task) {
+func saveTasks(queries *sqlc.Queries, taskChan <-chan *base.Task) {
 	for task := range taskChan {
-		err := queries.CreateTask(context.Background(), sqlc.CreateTaskParams(*task))
+		sqlcTask := *task.ToSQLCTask()
+		err := queries.CreateTask(context.Background(), sqlc.CreateTaskParams(sqlcTask))
 		if err != nil {
 			logger.Fatalf("Failed to save task %v with error: %v", task.ID, err)
 		} else {
