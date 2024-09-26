@@ -5,9 +5,9 @@ scrape_configs:
   - job_name: 'producer'
     metrics_path: '/metrics'
     static_configs:
-      - targets: ['producer:2112']
+      - targets: ['producer:6060']
 
   - job_name: 'consumer'
     metrics_path: '/metrics'
     static_configs:
-      - targets: ['consumer:2112']
+      - targets: ['consumer:6061']

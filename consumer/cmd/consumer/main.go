@@ -25,10 +25,22 @@ type Config struct {
 
 func main() {
 	config := parseFlags()
-	setupMonitoring(6061, 2112)
-	setupLogging(config.LogLevel)
 
-	dbpool := setupDatabase(os.Getenv("DB_URL"))
+	err := setupLogging(config.LogLevel)
+	if err != nil {
+		logger.Fatalf("Failed to set up logging: %v", err)
+	}
+
+	promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "service_up",
+		Help: "Indicates whether the service is up (1) or down (0)",
+	}).Set(1)
+	go monitoring.ExposeMetrics(6061)
+
+	dbpool, err := setupDatabase(os.Getenv("DB_URL"))
+	if err != nil {
+		logger.Fatalf("Failed to set up database: %v", err)
+	}
 	defer dbpool.Close()
 	queries := sqlc.New(dbpool)
 
@@ -45,29 +57,21 @@ func parseFlags() Config {
 	}
 }
 
-func setupMonitoring(metricsPort, profilingPort int) {
-	promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "service_up",
-		Help: "Indicates whether the service is up (1) or down (0)",
-	}).Set(1)
-	go monitoring.ExposeMetrics(metricsPort)
-	go monitoring.ExposeProfiling(profilingPort)
-}
-
-func setupLogging(logLevelFlag string) {
-	logLevel, err := getLogLevel(logLevelFlag)
+func setupLogging(logLevelFlag string) error {
+	level, err := getLogLevel(logLevelFlag)
 	if err != nil {
-		logger.Fatalf("Invalid log level: %v", err)
+		return fmt.Errorf("invalid log level: %v", err)
 	}
-	logging.SetLogLevel(logLevel)
+	logging.SetLogLevel(level)
+	return nil
 }
 
-func setupDatabase(dbURL string) *pgxpool.Pool {
+func setupDatabase(dbURL string) (*pgxpool.Pool, error) {
 	dbpool, err := pgxpool.New(context.Background(), dbURL)
 	if err != nil {
-		logger.Fatalf("Failed to create db pool with error: %v\n", err)
+		return nil, fmt.Errorf("failed to create db pool: %v", err)
 	}
-	return dbpool
+	return dbpool, nil
 }
 
 func getLogLevel(logLevelFlag string) (logging.LogLevel, error) {

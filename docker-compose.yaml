@@ -34,7 +34,6 @@ services:
       - .env
     expose:
       - "50051"
-      - "2112"
     ports:
       - "6060:6060"
     depends_on:
@@ -57,7 +56,6 @@ services:
       - .env
     expose:
       - "50051"
-      - "2112"
     ports:
       - "6061:6061"
     depends_on:

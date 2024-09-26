@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	_ "net/http/pprof"
 	"os"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -23,13 +22,15 @@ var logger = logging.GetLogger()
 
 func main() {
 	config := parseFlags()
-	setupMonitoring(6060, 2112)
-	setupLogging(config.LogLevel)
 
+	setupLogging(config.LogLevel)
 	err := setupLogging(config.LogLevel)
 	if err != nil {
 		logger.Fatalf("Failed to set up logging: %v", err)
 	}
+
+	monitoring.RegisterCollectors()
+	go monitoring.ExposeMetrics(6060)
 
 	dbpool, err := setupDatabase(os.Getenv("DB_URL"))
 	if err != nil {
@@ -52,12 +53,6 @@ func parseFlags() Config {
 	return Config{
 		LogLevel: *logLevelFlag,
 	}
-}
-
-func setupMonitoring(metricsPort, profilingPort int) {
-	monitoring.RegisterCollectors()
-	go monitoring.ExposeMetrics(metricsPort)
-	go monitoring.ExposeProfiling(profilingPort)
 }
 
 func setupLogging(logLevelFlag string) error {
