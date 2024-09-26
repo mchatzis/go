@@ -34,7 +34,7 @@ func HandleIncomingTasks(queries *sqlc.Queries) {
 	var unmatchedTasks sync.Map
 	for i := 0; i < 15; i++ {
 		go distributeIncomingTasksWithRateLimit(taskIncomingChan, taskProcessChanIn, taskUpdateInDbToProcessingChanIn, rateLimitDuration)
-		go processTasks(taskProcessChanIn, taskProcessChanOut)
+		go processTasks(taskProcessChanIn, taskProcessChanOut, pretendToProcess)
 		go updateTasksStateInDb(taskUpdateInDbToProcessingChanIn, taskUpdateInDbToProcessingChanOut, sqlc.TaskStateProcessing, queries)
 		go recombineChannels(taskProcessChanOut, taskUpdateInDbToProcessingChanOut, taskUpdateInDbToDoneChanIn, &unmatchedTasks)
 		go updateTasksStateInDb(taskUpdateInDbToDoneChanIn, taskUpdateInDbToDoneChanOut, sqlc.TaskStateDone, queries)
@@ -51,7 +51,7 @@ func distributeIncomingTasksWithRateLimit(taskChanIn <-chan *sqlc.Task, taskChan
 	}
 }
 
-func processTasks(taskChanIn <-chan *sqlc.Task, taskChanOut chan<- *sqlc.Task) {
+func processTasks(taskChanIn <-chan *sqlc.Task, taskChanOut chan<- *sqlc.Task, process func(*sqlc.Task) error) {
 	for task := range taskChanIn {
 		logger.Debugf("Processing task: %+v", task.ID)
 		err := process(task)
@@ -65,7 +65,7 @@ func processTasks(taskChanIn <-chan *sqlc.Task, taskChanOut chan<- *sqlc.Task) {
 	}
 }
 
-func process(task *sqlc.Task) error {
+func pretendToProcess(task *sqlc.Task) error {
 	time.Sleep(time.Duration(task.Value) * time.Millisecond)
 	return nil
 }

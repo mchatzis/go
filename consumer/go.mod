@@ -4,7 +4,7 @@ go 1.23.1
 
 require (
 	github.com/jackc/pgx/v5 v5.7.1
-	github.com/mchatzis/go/producer v0.0.0-20240926092742-c06559ce2654
+	github.com/mchatzis/go/producer v0.0.0-20240926115735-ac42c119eb45
 	github.com/prometheus/client_golang v1.20.4
 	github.com/stretchr/testify v1.9.0
 	google.golang.org/grpc v1.67.0

@@ -156,3 +156,68 @@ func TestDistributeIncomingTasksRateLimit(t *testing.T) {
 		t.Errorf("Expected rate limiting of at least %v, got %v", expectedDuration, duration)
 	}
 }
+
+type MockProcessor struct {
+	mock.Mock
+}
+
+func (m *MockProcessor) Process(task *sqlc.Task) error {
+	args := m.Called(task)
+	return args.Error(0)
+}
+
+func TestProcessTasks(t *testing.T) {
+	mockProc := new(MockProcessor)
+
+	mockProc.On("Process", mock.AnythingOfType("*sqlc.Task")).Return(nil).Once()
+	mockProc.On("Process", mock.AnythingOfType("*sqlc.Task")).Return(errors.New("processing error")).Once()
+	mockProc.On("Process", mock.AnythingOfType("*sqlc.Task")).Return(nil).Once()
+
+	taskChanIn := make(chan *sqlc.Task, 3)
+	taskChanOut := make(chan *sqlc.Task, 3)
+
+	go processTasks(taskChanIn, taskChanOut, mockProc.Process)
+
+	tasks := []*sqlc.Task{
+		{ID: 1, State: sqlc.TaskStatePending},
+		{ID: 2, State: sqlc.TaskStatePending},
+		{ID: 3, State: sqlc.TaskStatePending},
+	}
+
+	for _, task := range tasks {
+		taskChanIn <- task
+	}
+	close(taskChanIn)
+
+	processedTasks := make(map[int32]*sqlc.Task)
+	for i := 0; i < 2; i++ { // We expect 2 successful tasks
+		select {
+		case task := <-taskChanOut:
+			processedTasks[task.ID] = task
+		case <-time.After(1 * time.Second):
+			t.Fatal("Timeout waiting for processed task")
+		}
+	}
+
+	assert.Contains(t, processedTasks, int32(1), "Task 1 should be in the processed tasks")
+	assert.Equal(t, sqlc.TaskStateDone, processedTasks[1].State, "Task 1 should be done")
+
+	assert.NotContains(t, processedTasks, int32(2), "Task 2 should not be in the processed tasks")
+	assert.Equal(t, sqlc.TaskStateFailed, tasks[1].State, "Task 2 should be marked as failed")
+
+	assert.Contains(t, processedTasks, int32(3), "Task 3 should be in the processed tasks")
+	assert.Equal(t, sqlc.TaskStateDone, processedTasks[3].State, "Task 3 should be done")
+
+	mockProc.AssertExpectations(t)
+}
+
+func TestPretendToProcess(t *testing.T) {
+	task := &sqlc.Task{Value: 100}
+
+	start := time.Now()
+	err := pretendToProcess(task)
+	duration := time.Since(start)
+
+	assert.NoError(t, err)
+	assert.GreaterOrEqual(t, duration.Milliseconds(), int64(100), "Expected at least 100ms of processing time")
+}
