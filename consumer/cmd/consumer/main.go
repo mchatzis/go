@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	_ "net/http/pprof"
 	"os"
 
@@ -17,43 +18,69 @@ import (
 
 var logger = logging.GetLogger()
 
-func init() {
+type Config struct {
+	LogLevel string
+	DBURL    string
+}
+
+func main() {
+	config := parseFlags()
+	setupMonitoring(6061, 2112)
+	setupLogging(config.LogLevel)
+
+	dbpool := setupDatabase(os.Getenv("DB_URL"))
+	defer dbpool.Close()
+	queries := sqlc.New(dbpool)
+
+	go consumer.HandleIncomingTasks(queries)
+	select {}
+}
+
+func parseFlags() Config {
+	logLevelFlag := flag.String("loglevel", "info", "Log level (debug, info, warn, error)")
+	flag.Parse()
+
+	return Config{
+		LogLevel: *logLevelFlag,
+	}
+}
+
+func setupMonitoring(metricsPort, profilingPort int) {
 	promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "service_up",
 		Help: "Indicates whether the service is up (1) or down (0)",
 	}).Set(1)
-	go monitoring.ExposeMetrics(6061)
-	go monitoring.ExposeProfiling(2112)
+	go monitoring.ExposeMetrics(metricsPort)
+	go monitoring.ExposeProfiling(profilingPort)
 }
 
-func main() {
-	logLevelFlag := flag.String("loglevel", "info", "Log level (debug, info, warn, error)")
-	flag.Parse()
-	setLogerLevel(*logLevelFlag)
+func setupLogging(logLevelFlag string) {
+	logLevel, err := getLogLevel(logLevelFlag)
+	if err != nil {
+		logger.Fatalf("Invalid log level: %v", err)
+	}
+	logging.SetLogLevel(logLevel)
+}
 
-	dbpool, err := pgxpool.New(context.Background(), os.Getenv("DB_URL"))
+func setupDatabase(dbURL string) *pgxpool.Pool {
+	dbpool, err := pgxpool.New(context.Background(), dbURL)
 	if err != nil {
 		logger.Fatalf("Failed to create db pool with error: %v\n", err)
 	}
-	defer dbpool.Close()
-
-	queries := sqlc.New(dbpool)
-	go consumer.HandleIncomingTasks(queries)
-
-	select {}
+	return dbpool
 }
 
-func setLogerLevel(logLevelFlag string) {
+func getLogLevel(logLevelFlag string) (logging.LogLevel, error) {
 	switch logLevelFlag {
 	case "debug":
-		logging.SetLogLevel(logging.DEBUG)
+		return logging.DEBUG, nil
 	case "info":
-		logging.SetLogLevel(logging.INFO)
+		return logging.INFO, nil
 	case "warn":
-		logging.SetLogLevel(logging.WARN)
+		return logging.WARN, nil
 	case "error":
-		logging.SetLogLevel(logging.ERROR)
+		return logging.ERROR, nil
 	default:
-		logger.Fatalf("%+v is not a valid loglevel flag value", logLevelFlag)
+		return logging.LogLevel(0), fmt.Errorf("%s is not a valid loglevel flag value", logLevelFlag)
 	}
 }

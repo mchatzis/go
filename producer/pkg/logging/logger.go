@@ -53,6 +53,10 @@ func SetLogLevel(level LogLevel) {
 	GetLogger().level = level
 }
 
+func (l *logger) GetLogLevel() LogLevel {
+	return GetLogger().level
+}
+
 func SetOutput(out io.Writer) {
 	logger := GetLogger()
 	logger.debugLogger.SetOutput(out)
