@@ -14,22 +14,22 @@ import (
 )
 
 func TestUpdateTasksStateInDb(t *testing.T) {
-	t.Run("Successful update", func(t *testing.T) {
+	t.Run("Successful update to processing state in db", func(t *testing.T) {
 		mockDB := new(prod_testing.MockDBTX)
 		queries := sqlc.New(mockDB)
 
-		expectedState := base.TaskStateProcessing
-		expectedTaskID := int32(1)
+		mockExpectedState := sqlc.TaskStatePending
+		mockExpectedTaskID := int32(1)
 
-		mockDB.On("Exec", mock.Anything, mock.Anything, expectedState, expectedTaskID).
+		mockDB.On("Exec", mock.Anything, mock.Anything, mockExpectedState, mockExpectedTaskID).
 			Return(pgconn.CommandTag{}, nil)
 
 		taskChanIn := make(chan *base.Task)
 		taskChanOut := make(chan *base.Task)
 
-		go updateTasksStateInDb(taskChanIn, taskChanOut, expectedState, queries)
+		go updateTasksStateInDb(taskChanIn, taskChanOut, base.TaskStateProcessing, queries)
 
-		inputTask := &base.Task{ID: expectedTaskID, State: base.TaskStatePending}
+		inputTask := &base.Task{ID: int32(1), State: base.TaskStatePending}
 		taskChanIn <- inputTask
 		close(taskChanIn)
 
@@ -44,19 +44,19 @@ func TestUpdateTasksStateInDb(t *testing.T) {
 		mockDB := new(prod_testing.MockDBTX)
 		queries := sqlc.New(mockDB)
 
-		expectedState := base.TaskStateProcessing
-		expectedTaskID := int32(1)
+		mockExpectedState := sqlc.TaskStatePending
+		mockExpectedTaskID := int32(1)
 		expectedError := errors.New("Failed to perform database operation update state by id")
 
-		mockDB.On("Exec", mock.Anything, mock.Anything, expectedState, expectedTaskID).
+		mockDB.On("Exec", mock.Anything, mock.Anything, mockExpectedState, mockExpectedTaskID).
 			Return(pgconn.CommandTag{}, expectedError)
 
 		taskChanIn := make(chan *base.Task)
 		taskChanOut := make(chan *base.Task)
 
-		go updateTasksStateInDb(taskChanIn, taskChanOut, expectedState, queries)
+		go updateTasksStateInDb(taskChanIn, taskChanOut, base.TaskStateProcessing, queries)
 
-		inputTask := &base.Task{ID: expectedTaskID, State: base.TaskStatePending}
+		inputTask := &base.Task{ID: int32(1), State: base.TaskStatePending}
 		taskChanIn <- inputTask
 		close(taskChanIn)
 

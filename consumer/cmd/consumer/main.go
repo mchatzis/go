@@ -35,7 +35,7 @@ func main() {
 		Name: "service_up",
 		Help: "Indicates whether the service is up (1) or down (0)",
 	}).Set(1)
-	go monitoring.ExposeMetrics(6061)
+	go monitoring.ExposeMetrics(os.Getenv("CONSUMER_METRICS_PORT"))
 
 	dbpool, err := setupDatabase(os.Getenv("DB_URL"))
 	if err != nil {

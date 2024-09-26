@@ -26,6 +26,8 @@ github.com/kylelemons/godebug v1.1.0 h1:RPNrshWIDI6G2gRW9EHilWtl7Z6Sb1BR0xunSBf0
 github.com/kylelemons/godebug v1.1.0/go.mod h1:9/0rRGxNHcop5bhtWyNeEfOS8JIWk580+fNqagV/RAw=
 github.com/mchatzis/go/producer v0.0.0-20240926161256-fc9cebcebe16 h1:tbUw4n/CuD1oxnacldxHtxuGkiQjbO/Gsi9oS01wRIo=
 github.com/mchatzis/go/producer v0.0.0-20240926161256-fc9cebcebe16/go.mod h1:bssD3HfLQFA0rxLTZNYICe6ketClsDeYjv351GdDU04=
+github.com/mchatzis/go/producer v0.0.0-20240926170540-46bb1a4aa21b h1:y0FO8QaxE43MUXJ3fc0n1eeACu2qZDvhFLv22uHXtUM=
+github.com/mchatzis/go/producer v0.0.0-20240926170540-46bb1a4aa21b/go.mod h1:bssD3HfLQFA0rxLTZNYICe6ketClsDeYjv351GdDU04=
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 h1:C3w9PqII01/Oq1c1nUAm88MOHcQC9l5mIlSMApZMrHA=
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=

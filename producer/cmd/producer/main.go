@@ -30,7 +30,7 @@ func main() {
 	}
 
 	monitoring.RegisterCollectors()
-	go monitoring.ExposeMetrics(6060)
+	go monitoring.ExposeMetrics(os.Getenv("PRODUCER_METRICS_PORT"))
 
 	dbpool, err := setupDatabase(os.Getenv("DB_URL"))
 	if err != nil {
