@@ -84,3 +84,79 @@ func TestToGRPCTask(t *testing.T) {
 		t.Errorf("ToGRPCTask failed: got %+v, want %+v", grpcTask, task)
 	}
 }
+
+func TestMapFromGrpcState(t *testing.T) {
+	tests := []struct {
+		input    grpc.TaskState
+		expected TaskState
+	}{
+		{grpc.TaskState_PENDING, TaskStatePending},
+		{grpc.TaskState_PROCESSING, TaskStateProcessing},
+		{grpc.TaskState_DONE, TaskStateDone},
+		{grpc.TaskState_FAILED, TaskStateFailed},
+	}
+
+	for _, test := range tests {
+		result := mapFromGrpcState(test.input)
+		if result != test.expected {
+			t.Errorf("mapFromGrpcState(%v) = %v; want %v", test.input, result, test.expected)
+		}
+	}
+}
+
+func TestMapToGrpcState(t *testing.T) {
+	tests := []struct {
+		input    TaskState
+		expected grpc.TaskState
+	}{
+		{TaskStatePending, grpc.TaskState_PENDING},
+		{TaskStateProcessing, grpc.TaskState_PROCESSING},
+		{TaskStateDone, grpc.TaskState_DONE},
+		{TaskStateFailed, grpc.TaskState_FAILED},
+	}
+
+	for _, test := range tests {
+		result := mapToGrpcState(test.input)
+		if result != test.expected {
+			t.Errorf("mapToGrpcState(%v) = %v; want %v", test.input, result, test.expected)
+		}
+	}
+}
+
+func TestMapFromSqlcState(t *testing.T) {
+	tests := []struct {
+		input    sqlc.TaskState
+		expected TaskState
+	}{
+		{sqlc.TaskStatePending, TaskStatePending},
+		{sqlc.TaskStateProcessing, TaskStateProcessing},
+		{sqlc.TaskStateDone, TaskStateDone},
+		{sqlc.TaskStateFailed, TaskStateFailed},
+	}
+
+	for _, test := range tests {
+		result := mapFromSqlcState(test.input)
+		if result != test.expected {
+			t.Errorf("mapFromSqlcState(%v) = %v; want %v", test.input, result, test.expected)
+		}
+	}
+}
+
+func TestMapToSqlcState(t *testing.T) {
+	tests := []struct {
+		input    TaskState
+		expected sqlc.TaskState
+	}{
+		{TaskStatePending, sqlc.TaskStatePending},
+		{TaskStateProcessing, sqlc.TaskStateProcessing},
+		{TaskStateDone, sqlc.TaskStateDone},
+		{TaskStateFailed, sqlc.TaskStateFailed},
+	}
+
+	for _, test := range tests {
+		result := mapToSqlcState(test.input)
+		if result != test.expected {
+			t.Errorf("mapToSqlcState(%v) = %v; want %v", test.input, result, test.expected)
+		}
+	}
+}

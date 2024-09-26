@@ -29,7 +29,7 @@ func (t *Task) FromSQLCTask(sqlcTask *sqlc.Task) {
 	t.ID = sqlcTask.ID
 	t.Type = sqlcTask.Type
 	t.Value = sqlcTask.Value
-	t.State = TaskState(sqlcTask.State)
+	t.State = mapFromSqlcState(sqlcTask.State)
 	t.Creationtime = sqlcTask.Creationtime
 	t.Lastupdatetime = sqlcTask.Lastupdatetime
 }
@@ -39,7 +39,7 @@ func (t *Task) ToSQLCTask() *sqlc.Task {
 		ID:             t.ID,
 		Type:           t.Type,
 		Value:          t.Value,
-		State:          sqlc.TaskState(t.State),
+		State:          mapToSqlcState(t.State),
 		Creationtime:   t.Creationtime,
 		Lastupdatetime: t.Lastupdatetime,
 	}
@@ -90,6 +90,36 @@ func mapToGrpcState(state TaskState) grpc.TaskState {
 		return grpc.TaskState_DONE
 	case TaskStateFailed:
 		return grpc.TaskState_FAILED
+	default:
+		panic("Unexpected base.TaskState value")
+	}
+}
+
+func mapFromSqlcState(state sqlc.TaskState) TaskState {
+	switch state {
+	case sqlc.TaskStatePending:
+		return TaskStatePending
+	case sqlc.TaskStateProcessing:
+		return TaskStateProcessing
+	case sqlc.TaskStateDone:
+		return TaskStateDone
+	case sqlc.TaskStateFailed:
+		return TaskStateFailed
+	default:
+		panic("Unexpected sqlc.TaskState value")
+	}
+}
+
+func mapToSqlcState(state TaskState) sqlc.TaskState {
+	switch state {
+	case TaskStatePending:
+		return sqlc.TaskStatePending
+	case TaskStateProcessing:
+		return sqlc.TaskStateProcessing
+	case TaskStateDone:
+		return sqlc.TaskStateDone
+	case TaskStateFailed:
+		return sqlc.TaskStateFailed
 	default:
 		panic("Unexpected base.TaskState value")
 	}
