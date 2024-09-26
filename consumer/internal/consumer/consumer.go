@@ -11,7 +11,6 @@ import (
 )
 
 const bufferSize = 50
-const rateLimiterMultiplier = 500
 
 var logger = logging.GetLogger()
 
@@ -31,9 +30,10 @@ func HandleIncomingTasks(queries *sqlc.Queries) {
 	taskUpdateInDbToDoneChanIn := make(chan *sqlc.Task, bufferSize)
 	taskUpdateInDbToDoneChanOut := make(chan *sqlc.Task, bufferSize)
 
+	const rateLimitDuration = 500 * time.Millisecond
 	var unmatchedTasks sync.Map
 	for i := 0; i < 15; i++ {
-		go distributeIncomingTasks(taskIncomingChan, taskProcessChanIn, taskUpdateInDbToProcessingChanIn)
+		go distributeIncomingTasksWithRateLimit(taskIncomingChan, taskProcessChanIn, taskUpdateInDbToProcessingChanIn, rateLimitDuration)
 		go processTasks(taskProcessChanIn, taskProcessChanOut)
 		go updateTasksStateInDb(taskUpdateInDbToProcessingChanIn, taskUpdateInDbToProcessingChanOut, sqlc.TaskStateProcessing, queries)
 		go recombineChannels(taskProcessChanOut, taskUpdateInDbToProcessingChanOut, taskUpdateInDbToDoneChanIn, &unmatchedTasks)
@@ -42,19 +42,19 @@ func HandleIncomingTasks(queries *sqlc.Queries) {
 	}
 }
 
-func distributeIncomingTasks(taskChanIn <-chan *sqlc.Task, taskChanOut chan<- *sqlc.Task, taskChanOut2 chan<- *sqlc.Task) {
+func distributeIncomingTasksWithRateLimit(taskChanIn <-chan *sqlc.Task, taskChanOut chan<- *sqlc.Task, taskChanOut2 chan<- *sqlc.Task, rateLimitDuration time.Duration) {
 	for task := range taskChanIn {
 		task.State = sqlc.TaskStateProcessing
 		taskChanOut <- task
 		taskChanOut2 <- task
-		time.Sleep(time.Duration(rateLimiterMultiplier) * time.Millisecond)
+		time.Sleep(rateLimitDuration)
 	}
 }
 
 func processTasks(taskChanIn <-chan *sqlc.Task, taskChanOut chan<- *sqlc.Task) {
 	for task := range taskChanIn {
 		logger.Debugf("Processing task: %+v", task.ID)
-		err := pretendToProcess(task)
+		err := process(task)
 		if err != nil {
 			task.State = sqlc.TaskStateFailed
 			logger.Infof("Task %v failed processing with error: %v", task.ID, err)
@@ -65,7 +65,7 @@ func processTasks(taskChanIn <-chan *sqlc.Task, taskChanOut chan<- *sqlc.Task) {
 	}
 }
 
-func pretendToProcess(task *sqlc.Task) error {
+func process(task *sqlc.Task) error {
 	time.Sleep(time.Duration(task.Value) * time.Millisecond)
 	return nil
 }
