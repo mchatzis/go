@@ -1,6 +1,7 @@
 package migrate
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/golang-migrate/migrate/v4"
@@ -12,19 +13,43 @@ import (
 
 var logger = logging.GetLogger()
 
-func Migrate() {
+type Migrator struct {
+	m *migrate.Migrate
+}
+
+func NewMigrator() (*Migrator, error) {
 	m, err := migrate.New("file:///app/internal/db/migrations", os.Getenv("DB_URL"))
 	if err != nil {
-		logger.Fatalf("Failed to open connection to migrate with error: %v", err)
+		return nil, err
 	}
+	return &Migrator{m: m}, nil
+}
 
+func (mgr *Migrator) Up() error {
 	logger.Info("Migrating up...")
-	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		logger.Fatalf("Failed to migrate up with error: %v", err)
+	err := mgr.m.Up()
+	if err != nil && err != migrate.ErrNoChange {
+		return err
 	}
+	return nil
+}
 
+func (mgr *Migrator) Down() error {
 	logger.Info("Migrating down...")
-	if err := m.Down(); err != nil && err != migrate.ErrNoChange {
-		logger.Fatalf("Failed to migrate down with error: %v", err)
+	err := mgr.m.Down()
+	if err != nil && err != migrate.ErrNoChange {
+		return err
 	}
+	return nil
+}
+
+func (mgr *Migrator) Close() error {
+	sourceErr, dbErr := mgr.m.Close()
+	if sourceErr != nil {
+		return fmt.Errorf("source error: %v", sourceErr)
+	}
+	if dbErr != nil {
+		return fmt.Errorf("database error: %v", dbErr)
+	}
+	return nil
 }

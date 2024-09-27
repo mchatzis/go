@@ -31,7 +31,7 @@ func main() {
 	}
 
 	monitoring.RegisterCollectors()
-	go monitoring.ExposeMetrics(os.Getenv("PRODUCER_METRICS_PORT"))
+	go monitoring.StartServer(os.Getenv("PRODUCER_METRICS_PORT"))
 
 	dbpool, err := setupDatabase(os.Getenv("DB_URL"))
 	if err != nil {
