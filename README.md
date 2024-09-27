@@ -36,7 +36,7 @@ docker compose -f docker-compose-test.yaml up -d --build
 
 Now, you have a database instance. You just need to export the DB_URL to your terminal session:
 ```
-export DB_URL=postgres://user:password@postgres:5432/golang_db_test
+export DB_URL=postgres://user:password@localhost:5432/golang_db_test
 ```
 
 Now all tests should pass with `go test --cover -v ./...`
