@@ -16,6 +16,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
+var Version string
+
 var logger = logging.GetLogger()
 
 type Config struct {

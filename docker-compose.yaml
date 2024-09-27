@@ -30,6 +30,8 @@ services:
     build:
       context: ./producer
       dockerfile: ./build/Dockerfile
+      args:
+        BUILD_VERSION: v1.0.0
     env_file:
       - .env
     expose:
@@ -41,10 +43,10 @@ services:
         condition: service_healthy
     networks:
       - app-network
-    develop:
-      watch:
-        - action: rebuild
-          path: ./producer
+    # develop:
+    #   watch:
+    #     - action: rebuild
+    #       path: ./producer
     command: ./main --loglevel ${LOG_LEVEL} --max_backlog ${MAX_BACKLOG}
 
   consumer:
@@ -52,6 +54,8 @@ services:
     build:
       context: ./consumer
       dockerfile: ./build/Dockerfile
+      args:
+        BUILD_VERSION: v1.0.0
     env_file:
       - .env
     expose:
@@ -62,10 +66,10 @@ services:
       - postgres
     networks:
       - app-network
-    develop:
-      watch:
-        - action: rebuild
-          path: ./consumer
+    # develop:
+    #   watch:
+    #     - action: rebuild
+    #       path: ./consumer
     command: ./main --loglevel ${LOG_LEVEL} --rate_limit_multiplier ${RATE_LIMIT_MULTIPLIER}
 
   prometheus:

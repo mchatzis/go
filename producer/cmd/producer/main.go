@@ -13,6 +13,8 @@ import (
 	"github.com/mchatzis/go/producer/pkg/sqlc"
 )
 
+var Version string
+
 type Config struct {
 	LogLevel   string
 	DBURL      string

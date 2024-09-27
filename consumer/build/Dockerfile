@@ -8,4 +8,5 @@ RUN go mod download
 
 COPY . .
 
-RUN go build -o main ./cmd/consumer
+ARG BUILD_VERSION
+RUN go build -o main -ldflags "-X main.Version=${BUILD_VERSION}" ./cmd/consumer
