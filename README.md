@@ -52,4 +52,6 @@ Now all tests should pass with `go test --cover -v ./...`
 1. Better tests, more tests.
 2. Share a bit more code between the services
 3. Rethink extendability into design
+4. Implement graceful shutdown of channels and contexts
+5. Make db operations transactional (pretty straightforward since DBTX interface supports it out-of-the-box)
 
