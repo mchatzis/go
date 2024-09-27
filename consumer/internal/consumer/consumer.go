@@ -20,7 +20,7 @@ Updating the state to 'Processing' in DB happens concurrently with actually proc
 the tasks. This is to avoid the I/O performance bottleneck of a sequential design, which
 depends on DB access latency.
 */
-func HandleIncomingTasks(queries *sqlc.Queries) {
+func HandleIncomingTasks(queries *sqlc.Queries, rateLimitMultiplier int) {
 	taskIncomingChan := make(chan *base.Task)
 	go grpc.ListenForTasks(taskIncomingChan)
 
@@ -31,7 +31,7 @@ func HandleIncomingTasks(queries *sqlc.Queries) {
 	taskUpdateInDbToDoneChanIn := make(chan *base.Task, bufferSize)
 	taskUpdateInDbToDoneChanOut := make(chan *base.Task, bufferSize)
 
-	const rateLimitDuration = 500 * time.Millisecond
+	var rateLimitDuration = time.Duration(rateLimitMultiplier) * time.Millisecond
 	var unmatchedTasks sync.Map
 	for i := 0; i < 15; i++ {
 		go distributeIncomingTasksWithRateLimit(taskIncomingChan, taskProcessChanIn, taskUpdateInDbToProcessingChanIn, rateLimitDuration)

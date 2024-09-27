@@ -11,15 +11,13 @@ import (
 	"github.com/mchatzis/go/producer/pkg/sqlc"
 )
 
-const MaxBacklog int = 50
-
 var logger = logging.GetLogger()
 
-func Produce(queries *sqlc.Queries) {
+func Produce(queries *sqlc.Queries, maxBacklog int) {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
-	saveTaskChan := make(chan *base.Task, MaxBacklog)
-	sendTaskChan := make(chan *base.Task, MaxBacklog)
+	saveTaskChan := make(chan *base.Task, maxBacklog)
+	sendTaskChan := make(chan *base.Task, maxBacklog)
 
 	for i := 0; i < 3; i++ {
 		go saveTasks(queries, saveTaskChan)

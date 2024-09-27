@@ -14,8 +14,9 @@ import (
 )
 
 type Config struct {
-	LogLevel string
-	DBURL    string
+	LogLevel   string
+	DBURL      string
+	MaxBacklog int
 }
 
 var logger = logging.GetLogger()
@@ -40,7 +41,7 @@ func main() {
 	queries := sqlc.New(dbpool)
 
 	logger.Info("Starting task production...")
-	go producer.Produce(queries)
+	go producer.Produce(queries, config.MaxBacklog)
 	go monitoring.UpdateMetrics(queries)
 
 	select {}
@@ -48,10 +49,12 @@ func main() {
 
 func parseFlags() Config {
 	logLevelFlag := flag.String("loglevel", "info", "Log level (debug, info, warn, error)")
+	maxBacklogFlag := flag.Int("max_backlog", 50, "Maximum back log, after that stop sending to consumer")
 	flag.Parse()
 
 	return Config{
-		LogLevel: *logLevelFlag,
+		LogLevel:   *logLevelFlag,
+		MaxBacklog: *maxBacklogFlag,
 	}
 }
 

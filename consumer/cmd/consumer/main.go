@@ -19,8 +19,9 @@ import (
 var logger = logging.GetLogger()
 
 type Config struct {
-	LogLevel string
-	DBURL    string
+	LogLevel            string
+	DBURL               string
+	RateLimitMultiplier int
 }
 
 func main() {
@@ -44,16 +45,18 @@ func main() {
 	defer dbpool.Close()
 	queries := sqlc.New(dbpool)
 
-	go consumer.HandleIncomingTasks(queries)
+	go consumer.HandleIncomingTasks(queries, config.RateLimitMultiplier)
 	select {}
 }
 
 func parseFlags() Config {
 	logLevelFlag := flag.String("loglevel", "info", "Log level (debug, info, warn, error)")
+	rateLimitMultiplierFlag := flag.Int("rate_limit_multiplier", 500, "Limit the rate of incoming tasks. Introduces delay of that many milliseconds")
 	flag.Parse()
 
 	return Config{
-		LogLevel: *logLevelFlag,
+		LogLevel:            *logLevelFlag,
+		RateLimitMultiplier: *rateLimitMultiplierFlag,
 	}
 }
 
