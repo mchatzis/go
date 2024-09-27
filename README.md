@@ -13,6 +13,9 @@ A simple .env file has been provided.
 docker compose up --build
 ```
 
+Check all is good through Grafana at `http://localhost:3000` with user-password both `admin`.
+
+
 If you restart the container, producer will fail because it will try to create tasks in the database that already exist from the previous run. So, use `-v` flag to remove the volume of the db before relaunching:
 
 ```
