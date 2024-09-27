@@ -16,15 +16,21 @@ import (
 var Version string
 
 type Config struct {
-	LogLevel   string
-	DBURL      string
-	MaxBacklog int
+	ShowVersion bool
+	LogLevel    string
+	DBURL       string
+	MaxBacklog  int
 }
 
 var logger = logging.GetLogger()
 
 func main() {
 	config := parseFlags()
+
+	if config.ShowVersion {
+		fmt.Printf("Version: %s\n", Version)
+		os.Exit(0)
+	}
 
 	setupLogging(config.LogLevel)
 	err := setupLogging(config.LogLevel)
@@ -50,13 +56,15 @@ func main() {
 }
 
 func parseFlags() Config {
+	versionFlag := flag.Bool("version", false, "Show version information")
 	logLevelFlag := flag.String("loglevel", "info", "Log level (debug, info, warn, error)")
 	maxBacklogFlag := flag.Int("max_backlog", 50, "Maximum back log, after that stop sending to consumer")
 	flag.Parse()
 
 	return Config{
-		LogLevel:   *logLevelFlag,
-		MaxBacklog: *maxBacklogFlag,
+		ShowVersion: *versionFlag,
+		LogLevel:    *logLevelFlag,
+		MaxBacklog:  *maxBacklogFlag,
 	}
 }
 

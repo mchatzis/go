@@ -21,6 +21,7 @@ var Version string
 var logger = logging.GetLogger()
 
 type Config struct {
+	ShowVersion         bool
 	LogLevel            string
 	DBURL               string
 	RateLimitMultiplier int
@@ -28,6 +29,11 @@ type Config struct {
 
 func main() {
 	config := parseFlags()
+
+	if config.ShowVersion {
+		fmt.Printf("Version: %s\n", Version)
+		os.Exit(0)
+	}
 
 	err := setupLogging(config.LogLevel)
 	if err != nil {
@@ -52,11 +58,13 @@ func main() {
 }
 
 func parseFlags() Config {
+	versionFlag := flag.Bool("version", false, "Show version information")
 	logLevelFlag := flag.String("loglevel", "info", "Log level (debug, info, warn, error)")
 	rateLimitMultiplierFlag := flag.Int("rate_limit_multiplier", 500, "Limit the rate of incoming tasks. Introduces delay of that many milliseconds")
 	flag.Parse()
 
 	return Config{
+		ShowVersion:         *versionFlag,
 		LogLevel:            *logLevelFlag,
 		RateLimitMultiplier: *rateLimitMultiplierFlag,
 	}
