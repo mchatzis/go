@@ -26,14 +26,9 @@ func SendTasks(taskChan <-chan *base.Task) {
 	logger.Info("Grpc client is running on port 50051...")
 	logger.Info("Successfully connected to GRPC server...")
 
-	for i := 0; i < 3; i++ {
-		go func() {
-			for task := range taskChan {
-				sendTask(client, task)
-			}
-		}()
+	for task := range taskChan {
+		sendTask(client, task)
 	}
-	select {}
 }
 
 func sendTask(client prod_grpc.TaskServiceClient, task *base.Task) {
