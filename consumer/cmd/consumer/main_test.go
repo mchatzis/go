@@ -48,14 +48,22 @@ func TestParseFlags(t *testing.T) {
 		expectedConfig Config
 	}{
 		{
-			name:           "Default values",
-			args:           []string{"cmd"},
-			expectedConfig: Config{LogLevel: "info"},
+			name: "Default values",
+			args: []string{"cmd"},
+			expectedConfig: Config{
+				ShowVersion:         false,
+				LogLevel:            "info",
+				RateLimitMultiplier: 500,
+			},
 		},
 		{
-			name:           "Custom log level",
-			args:           []string{"cmd", "-loglevel", "debug"},
-			expectedConfig: Config{LogLevel: "debug"},
+			name: "Custom log level",
+			args: []string{"cmd", "-loglevel", "debug"},
+			expectedConfig: Config{
+				ShowVersion:         false,
+				LogLevel:            "debug",
+				RateLimitMultiplier: 500,
+			},
 		},
 	}
 

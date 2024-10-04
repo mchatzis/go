@@ -33,7 +33,7 @@ func HandleIncomingTasks(queries *sqlc.Queries, rateLimitMultiplier int) {
 
 	var rateLimitDuration = time.Duration(rateLimitMultiplier) * time.Millisecond
 	var unmatchedTasks sync.Map
-	for i := 0; i < 15; i++ {
+	for i := 0; i < 5; i++ {
 		go distributeIncomingTasksWithRateLimit(taskIncomingChan, taskProcessChanIn, taskUpdateInDbToProcessingChanIn, rateLimitDuration)
 		go processTasks(taskProcessChanIn, taskProcessChanOut, pretendToProcess)
 		go updateTasksStateInDb(taskUpdateInDbToProcessingChanIn, taskUpdateInDbToProcessingChanOut, base.TaskStateProcessing, queries)
@@ -91,13 +91,13 @@ func recombineChannels(taskChanIn <-chan *base.Task, taskChanIn2 <-chan *base.Ta
 	// Matched tasks are then sent to get updated to 'done'.
 	// Ensures each task has both been processed and updated in db to 'processing',
 	// 	before forwarding to another db update to 'done' state.
+	var task *base.Task
 	for {
 		select {
-		case task := <-taskChanIn:
-			tryMatchTask(task, taskChanOut, unmatchedTasks)
-		case task := <-taskChanIn2:
-			tryMatchTask(task, taskChanOut, unmatchedTasks)
+		case task = <-taskChanIn:
+		case task = <-taskChanIn2:
 		}
+		tryMatchTask(task, taskChanOut, unmatchedTasks)
 	}
 }
 
