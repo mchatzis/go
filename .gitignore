@@ -17,3 +17,6 @@ go.work.sum
 
 # Aider
 .aider*
+
+# Other
+.DS_Store

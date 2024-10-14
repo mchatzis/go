@@ -1,11 +1,3 @@
-### Challenge
-- Pre-existing Golang knowledge: zero
-- Golang theory: 2 days
-- Challenge: 10 days
-- Help: 
-  - chatgpt-4o
-  - claude-sonnet-3.5
-
 ### Usage
 A simple .env file has been provided.
 
