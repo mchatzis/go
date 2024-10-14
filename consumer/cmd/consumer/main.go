@@ -10,10 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mchatzis/go/consumer/internal/consumer"
 	"github.com/mchatzis/go/producer/pkg/logging"
-	"github.com/mchatzis/go/producer/pkg/monitoring"
 	"github.com/mchatzis/go/producer/pkg/sqlc"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 var Version string
@@ -40,11 +37,11 @@ func main() {
 		logger.Fatalf("Failed to set up logging: %v", err)
 	}
 
-	promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "service_up",
-		Help: "Indicates whether the service is up (1) or down (0)",
-	}).Set(1)
-	go monitoring.ExposeMetrics(os.Getenv("CONSUMER_METRICS_PORT"))
+	// promauto.NewGauge(prometheus.GaugeOpts{
+	// 	Name: "service_up",
+	// 	Help: "Indicates whether the service is up (1) or down (0)",
+	// }).Set(1)
+	// go monitoring.ExposeMetrics(os.Getenv("CONSUMER_METRICS_PORT"))
 
 	dbpool, err := setupDatabase(os.Getenv("DB_URL"))
 	if err != nil {

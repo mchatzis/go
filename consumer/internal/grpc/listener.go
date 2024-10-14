@@ -1,7 +1,9 @@
 package grpc
 
 import (
-	"context"
+	"fmt"
+	"io"
+	"log"
 	"net"
 
 	"google.golang.org/grpc"
@@ -12,8 +14,6 @@ import (
 	"github.com/mchatzis/go/producer/pkg/logging"
 )
 
-const rateLimiterMultiplier int = 10
-
 var logger = logging.GetLogger()
 
 type server struct {
@@ -21,20 +21,30 @@ type server struct {
 	taskChan chan *base.Task
 }
 
-func (s *server) SendTask(ctx context.Context, grpc_task *prod_grpc.Task) (*emptypb.Empty, error) {
-	task := &base.Task{}
-	task.FromGRPCTask(grpc_task)
+func (s *server) SendTasks(stream prod_grpc.TaskService_SendTasksServer) error {
+	for {
+		received, err := stream.Recv()
+		if err == io.EOF {
+			return stream.SendAndClose(&emptypb.Empty{})
+		}
+		if err != nil {
+			return err
+		}
 
-	s.taskChan <- task
+		task := &base.Task{}
+		task.FromGRPCTask(received)
 
-	return &emptypb.Empty{}, nil
+		s.taskChan <- task
+	}
+
 }
 
 func ListenForTasks(taskChanOut chan *base.Task) {
 	logger.Info("Opening tcp connection...")
-	listener, err := net.Listen("tcp", ":50051")
+	port := 50051
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
-		logger.Fatalf("Failed to listen tcp on port 50051 with error: %v", err)
+		log.Fatalf("failed to listen: %v", err)
 	}
 
 	server := &server{
