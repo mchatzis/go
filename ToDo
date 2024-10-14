@@ -12,7 +12,7 @@
 - Use TaskStateFailed
 - Update task state not only in db but also in memory (i.e. *sqlc.Task)
 - Correct syntax for channel function parameters that are receive-only channels to taskChan <-chan sqlc.Task
-- Understand context.Background()
+- Close grpc channel when done
 
 Done:
 - Extract shared microservice code

@@ -20,14 +20,14 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	TaskService_SendTask_FullMethodName = "/TaskService/SendTask"
+	TaskService_SendTasks_FullMethodName = "/TaskService/SendTasks"
 )
 
 // TaskServiceClient is the client API for TaskService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type TaskServiceClient interface {
-	SendTask(ctx context.Context, in *Task, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	SendTasks(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[Task, emptypb.Empty], error)
 }
 
 type taskServiceClient struct {
@@ -38,21 +38,24 @@ func NewTaskServiceClient(cc grpc.ClientConnInterface) TaskServiceClient {
 	return &taskServiceClient{cc}
 }
 
-func (c *taskServiceClient) SendTask(ctx context.Context, in *Task, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *taskServiceClient) SendTasks(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[Task, emptypb.Empty], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, TaskService_SendTask_FullMethodName, in, out, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &TaskService_ServiceDesc.Streams[0], TaskService_SendTasks_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	x := &grpc.GenericClientStream[Task, emptypb.Empty]{ClientStream: stream}
+	return x, nil
 }
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type TaskService_SendTasksClient = grpc.ClientStreamingClient[Task, emptypb.Empty]
 
 // TaskServiceServer is the server API for TaskService service.
 // All implementations must embed UnimplementedTaskServiceServer
 // for forward compatibility.
 type TaskServiceServer interface {
-	SendTask(context.Context, *Task) (*emptypb.Empty, error)
+	SendTasks(grpc.ClientStreamingServer[Task, emptypb.Empty]) error
 	mustEmbedUnimplementedTaskServiceServer()
 }
 
@@ -63,8 +66,8 @@ type TaskServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedTaskServiceServer struct{}
 
-func (UnimplementedTaskServiceServer) SendTask(context.Context, *Task) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SendTask not implemented")
+func (UnimplementedTaskServiceServer) SendTasks(grpc.ClientStreamingServer[Task, emptypb.Empty]) error {
+	return status.Errorf(codes.Unimplemented, "method SendTasks not implemented")
 }
 func (UnimplementedTaskServiceServer) mustEmbedUnimplementedTaskServiceServer() {}
 func (UnimplementedTaskServiceServer) testEmbeddedByValue()                     {}
@@ -87,23 +90,12 @@ func RegisterTaskServiceServer(s grpc.ServiceRegistrar, srv TaskServiceServer) {
 	s.RegisterService(&TaskService_ServiceDesc, srv)
 }
 
-func _TaskService_SendTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Task)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(TaskServiceServer).SendTask(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: TaskService_SendTask_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TaskServiceServer).SendTask(ctx, req.(*Task))
-	}
-	return interceptor(ctx, in, info, handler)
+func _TaskService_SendTasks_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(TaskServiceServer).SendTasks(&grpc.GenericServerStream[Task, emptypb.Empty]{ServerStream: stream})
 }
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type TaskService_SendTasksServer = grpc.ClientStreamingServer[Task, emptypb.Empty]
 
 // TaskService_ServiceDesc is the grpc.ServiceDesc for TaskService service.
 // It's only intended for direct use with grpc.RegisterService,
@@ -111,12 +103,13 @@ func _TaskService_SendTask_Handler(srv interface{}, ctx context.Context, dec fun
 var TaskService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "TaskService",
 	HandlerType: (*TaskServiceServer)(nil),
-	Methods: []grpc.MethodDesc{
+	Methods:     []grpc.MethodDesc{},
+	Streams: []grpc.StreamDesc{
 		{
-			MethodName: "SendTask",
-			Handler:    _TaskService_SendTask_Handler,
+			StreamName:    "SendTasks",
+			Handler:       _TaskService_SendTasks_Handler,
+			ClientStreams: true,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
 	Metadata: "grpc.proto",
 }

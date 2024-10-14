@@ -2,7 +2,7 @@ package grpc
 
 import (
 	"context"
-	"time"
+	"log"
 
 	"github.com/mchatzis/go/producer/pkg/base"
 	prod_grpc "github.com/mchatzis/go/producer/pkg/grpc"
@@ -26,19 +26,23 @@ func SendTasks(taskChan <-chan *base.Task) {
 	logger.Info("Grpc client is running on port 50051...")
 	logger.Info("Successfully connected to GRPC server...")
 
-	for task := range taskChan {
-		sendTask(client, task)
-	}
-}
-
-func sendTask(client prod_grpc.TaskServiceClient, task *base.Task) {
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
-	_, err := client.SendTask(ctx, task.ToGRPCTask())
+	stream, err := client.SendTasks(context.Background())
 	if err != nil {
-		logger.Errorf("Error sending task: %v with error %v", task.ID, err)
-		return
+		logger.Fatalf("Error creating stream: %v", err)
 	}
-	logger.Debugf("Grpc sent task: %v", task.ID)
+
+	for task := range taskChan {
+		err := stream.Send(task.ToGRPCTask())
+		if err != nil {
+			logger.Errorf("Error sending task: %v with error %v", task.ID, err)
+			return
+		}
+		logger.Debugf("Grpc sent task: %v", task.ID)
+	}
+
+	reply, err := stream.CloseAndRecv()
+	if err != nil {
+		log.Fatalf("%v.CloseAndRecv() got error %v, want %v", stream, err, nil)
+	}
+	log.Printf("Grpc closed stream reply: %v", reply)
 }
